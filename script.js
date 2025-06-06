@@ -1,212 +1,299 @@
-class AIChat {
-    constructor() {
-        this.apiKey = 'ddc-a4f-796282249bb7466383eaabebc348d027';
-        this.baseUrl = 'https://api.a4f.co/v1/chat/completions';
-        this.model = 'provider-4/gpt-4.1';
-        this.conversationHistory = [];
-        this.currentUser = null;
-        this.autoSave = true;
-        this.isSidebarOpen = false;
+<!DOCTYPE html>
+<html lang="en">
 
-        this.initializeElements();
-        this.attachEventListeners();
-        this.loadSavedSettings();
-        this.showWelcomeScreen();
-    }
-
-    loadSavedSettings() {
-        // Load saved user data
-        const savedUser = localStorage.getItem('aiChatUser');
-        if (savedUser) {
-            this.currentUser = JSON.parse(savedUser);
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <meta name="google-signin-client_id" content="915826743225-3giml6kn6q9iu0j6i920275k4v04v3qq.apps.googleusercontent.com">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
         }
 
-        // Load auto-save preference
-        const autoSave = localStorage.getItem('autoSave');
-        if (autoSave !== null) {
-            this.autoSave = JSON.parse(autoSave);
-            if (this.autoSaveToggle) {
-                this.autoSaveToggle.checked = this.autoSave;
+        .chat-container {
+            height: calc(100vh - 200px);
+        }
+
+        .message-bubble {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
             }
         }
 
-        // Load conversation history for logged-in user
-        if (this.currentUser && this.autoSave) {
-            const savedHistory = localStorage.getItem(`chatHistory_${this.currentUser.id}`);
-            if (savedHistory) {
-                this.conversationHistory = JSON.parse(savedHistory);
-                this.loadConversationHistory();
+        .typing-indicator {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 0.4;
+            }
+            50% {
+                opacity: 1;
             }
         }
-    }
 
-    showWelcomeScreen() {
-        if (this.welcomeScreen) {
-            this.welcomeScreen.classList.remove('hidden');
-        }
-        if (this.chatInterface) {
-            this.chatInterface.classList.add('hidden');
-        }
-    }
-
-    initializeElements() {
-        // Welcome screen elements
-        this.welcomeScreen = document.getElementById('welcomeScreen');
-        this.continueWithoutLogin = document.getElementById('continueWithoutLogin');
-        this.signInForSync = document.getElementById('signInForSync');
-
-        // Settings elements
-        this.settingsButton = document.getElementById('settingsButton');
-        this.settingsModal = document.getElementById('settingsModal');
-        this.closeSettingsModal = document.getElementById('closeSettingsModal');
-        this.autoSaveToggle = document.getElementById('autoSaveToggle');
-
-        // User info elements
-        this.chatInterface = document.getElementById('chatInterface');
-        this.userInfo = document.getElementById('userInfo');
-        this.userAvatar = document.getElementById('userAvatar');
-        this.userName = document.getElementById('userName');
-        this.userEmail = document.getElementById('userEmail');
-
-        // Chat elements
-        this.chatMessages = document.getElementById('chatMessages');
-        this.messageInput = document.getElementById('messageInput');
-        this.sendButton = document.getElementById('sendButton');
-        this.typingIndicator = document.getElementById('typingIndicator');
-        this.clearChatButton = document.getElementById('clearChatButton');
-        this.historyButton = document.getElementById('historyButton');
-        this.chatHistorySidebar = document.getElementById('chatHistorySidebar');
-        this.closeHistoryButton = document.getElementById('closeHistoryButton');
-
-
-        // Modal elements
-        this.errorModal = document.getElementById('errorModal');
-        this.errorMessage = document.getElementById('errorMessage');
-        this.closeErrorModal = document.getElementById('closeErrorModal');
-    }
-
-    attachEventListeners() {
-        // Welcome screen buttons
-        if (this.continueWithoutLogin) {
-            this.continueWithoutLogin.addEventListener('click', () => this.startChatting());
+        .gradient-bg {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
+            min-height: 100vh;
         }
 
-        if (this.signInForSync) {
-            this.signInForSync.addEventListener('click', () => this.showSettings());
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
         }
 
-        // Attach settings related listeners
-        this.attachSettingsListeners();
-
-        // Mobile sidebar toggle
-        const toggleSidebarButton = document.getElementById('toggleSidebarButton');
-        const closeSidebarButton = document.getElementById('closeSidebarButton');
-
-        if (toggleSidebarButton) {
-            toggleSidebarButton.addEventListener('click', () => this.toggleSidebar());
+        .message-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            border-color: #6366f1;
         }
 
-        if (closeSidebarButton) {
-            closeSidebarButton.addEventListener('click', () => this.closeSidebar());
+        .send-button {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        // Close sidebar when clicking outside
-        document.addEventListener('click', (e) => {
-            if (this.isSidebarOpen && 
-                !e.target.closest('#chatHistorySidebar') && 
-                !e.target.closest('#toggleSidebarButton')) {
-                this.closeSidebar();
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(99, 102, 241, 0.3);
+            background: linear-gradient(135deg, #5855eb 0%, #7c3aed 100%);
+        }
+
+        .send-button:active {
+            transform: translateY(0);
+        }
+
+        .send-button:disabled {
+            background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%);
+            transform: none;
+            box-shadow: none;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: rgba(241, 245, 249, 0.5);
+            border-radius: 4px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+            border-radius: 4px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+        }
+
+        .user-message {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+            color: white;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .ai-message {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            color: #1f2937;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        }
+
+        .header-gradient {
+            background: linear-gradient(135deg, #1f2937 0%, #4f46e5 50%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        .soft-glow {
+            text-shadow: 0 0 8px rgba(124, 58, 237, 0.6);
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px rgba(99, 102, 241, 0.3), 0 0 20px rgba(99, 102, 241, 0.3), 0 0 30px rgba(99, 102, 241, 0.3);
             }
-        });
-
-        if (this.autoSaveToggle) {
-            this.autoSaveToggle.addEventListener('change', (e) => {
-                this.autoSave = e.target.checked;
-                localStorage.setItem('autoSave', JSON.stringify(this.autoSave));
-                if (this.currentUser && this.autoSave) {
-                    this.saveConversationHistory();
-                }
-            });
+            to {
+                text-shadow: 0 0 20px rgba(99, 102, 241, 0.5), 0 0 30px rgba(99, 102, 241, 0.5), 0 0 40px rgba(99, 102, 241, 0.5);
+            }
         }
 
-        // Authentication event listeners
-        if (this.customGoogleSignIn) {
-            this.customGoogleSignIn.addEventListener('click', () => this.initiateGoogleSignIn());
+        .floating-animation {
+            animation: float 6s ease-in-out infinite;
         }
 
-        const signOutButton = document.getElementById('signOutButton');
-        if (signOutButton) {
-            signOutButton.addEventListener('click', () => this.signOut());
+        @keyframes float {
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
         }
 
-
-        // Chat event listeners
-        if (this.clearChatButton) {
-            this.clearChatButton.addEventListener('click', () => {
-                if (confirm('Are you sure you want to clear the conversation?')) {
-                    this.clearConversation();
-                }
-            });
+        .input-container {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
         }
 
-        if (this.sendButton) {
-            this.sendButton.addEventListener('click', () => this.sendMessage());
+        .error-modal-bg {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(8px);
         }
 
-        if (this.messageInput) {
-            // Enter key press
-            this.messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    this.sendMessage();
-                }
-            });
-
-            // Input validation
-            this.messageInput.addEventListener('input', () => {
-                const message = this.messageInput.value.trim();
-                this.sendButton.disabled = message.length === 0;
-
-                if (message.length > 0) {
-                    this.sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                } else {
-                    this.sendButton.classList.add('opacity-50', 'cursor-not-allowed');
-                }
-            });
+        .error-modal-content {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         }
 
-        // Error modal close
-        if (this.closeErrorModal) {
-            this.closeErrorModal.addEventListener('click', () => this.hideErrorModal());
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: shimmer 2s infinite;
         }
 
-        if (this.errorModal) {
-            this.errorModal.addEventListener('click', (e) => {
-                if (e.target === this.errorModal) {
-                    this.hideErrorModal();
-                }
-            });
-        }
-        
-        if (this.historyButton) {
-            this.historyButton.addEventListener('click', () => this.toggleChatHistory());
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(100%);
+            }
         }
 
-        if (this.closeHistoryButton) {
-            this.closeHistoryButton.addEventListener('click', () => this.toggleChatHistory());
+        .welcome-message {
+            position: relative;
+            overflow: hidden;
         }
-    }
 
-    startChatting() {
-        if (this.welcomeScreen) {
-            this.welcomeScreen.classList.add('hidden');
+        .welcome-message::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+            animation: shimmer 3s infinite;
         }
-        if (this.chatInterface) {
-            this.chatInterface.classList.remove('hidden');
-            
-            // Initialize chat with welcome message if no history
-            if (this.chatMessages && this.chatMessages.children.length === 0) {
-                this.chatMessages.innerHTML = `
+    </style>
+</head>
+
+<body class="gradient-bg text-gray-800 min-h-screen">
+    <div id="welcomeScreen" class="min-h-screen flex items-center justify-center px-4">
+        <div class="glass-effect rounded-3xl p-12 max-w-lg w-full text-center shadow-2xl">
+            <div class="floating-animation mb-8">
+                <h1 class="text-5xl font-bold mb-4 header-gradient soft-glow">
+                    At41rv
+                </h1>
+                <p class="text-gray-600 text-xl font-medium mb-2">
+                    Your AI Companion
+                </p>
+                <p class="text-gray-500 text-sm">
+                    Powered by Atharv
+                </p>
+            </div>
+
+            <div class="space-y-4">
+                <button id="continueWithoutLogin" class="w-full bg-gradient-to-r from-slate-700 to-slate-900 text-white py-4 px-6 rounded-2xl font-semibold hover:from-slate-600 hover:to-slate-800 transition-all duration-300 transform hover:scale-105">
+                      Start Chatting Now
+                </button>
+
+                <div class="text-gray-500 text-sm">or</div>
+
+                <button id="signInForSync" class="w-full bg-white border-2 border-gray-300 text-gray-700 py-4 px-6 rounded-2xl font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all duration-300 flex items-center justify-center space-x-3">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <span>Sign in to Sync Chats</span>
+                </button>
+            </div>
+
+            <div class="mt-8 text-xs text-gray-500">
+                <p>Sign in to save your conversations across devices</p>
+                <p class="mt-2">Need help? Contact us at <a href="mailto:at41rv@gmail.com" class="text-indigo-600 hover:text-indigo-800">at41rv@gmail.com</a></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="chatInterface" class="container mx-auto px-4 py-6 max-w-7xl hidden">
+        <div class="flex justify-between items-center mb-6 glass-effect rounded-2xl p-4">
+            <div class="flex items-center space-x-4">
+                <button id="historyButton" class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all duration-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <h2 class="text-xl font-bold header-gradient soft-glow">At41rv</h2>
+                <div id="userInfo" class="flex items-center space-x-3 hidden">
+                    <img id="userAvatar" src="" alt="User Avatar" class="w-8 h-8 rounded-full">
+                    <div>
+                        <div id="userName" class="text-sm font-semibold text-gray-800"></div>
+                        <div id="userEmail" class="text-xs text-gray-600"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button id="settingsButton" class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all duration-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </button>
+                <button id="clearChatButton" class="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all duration-200 text-sm font-medium">
+                    Clear Chat
+                </button>
+            </div>
+        </div>
+
+        <div class="text-center mb-8 floating-animation">
+            <h1 class="text-5xl font-bold mb-4 header-gradient soft-glow">
+                At41rv
+            </h1>
+            <p class="text-grey-600 text-xl font-medium">
+                Powered by Atharv
+            </p>
+        </div>
+
+        <div class="flex gap-6">
+            <div id="chatHistorySidebar" class="hidden w-80 glass-effect rounded-3xl shadow-2xl overflow-hidden transition-all duration-300">
+                <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-gray-800">Chat History</h3>
+                    <button id="closeHistoryButton" class="p-2 text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div id="chatHistoryList" class="overflow-y-auto h-[calc(100vh-280px)]">
+                    </div>
+            </div>
+
+            <div class="glass-effect rounded-3xl shadow-2xl overflow-hidden flex-1">
+                <div id="chatMessages" class="chat-messages chat-container overflow-y-auto p-8 space-y-6">
                     <div class="message-bubble flex justify-start">
                         <div class="ai-message welcome-message rounded-3xl rounded-bl-lg px-8 py-6 max-w-md">
                             <p class="text-gray-700 font-medium">
@@ -214,578 +301,129 @@ class AIChat {
                             </p>
                         </div>
                     </div>
-                `;
-            }
+                </div>
 
-            // Re-initialize elements that are now visible
-            this.settingsButton = document.getElementById('settingsButton');
-            this.settingsModal = document.getElementById('settingsModal');
-            this.closeSettingsModal = document.getElementById('closeSettingsModal');
-            
-            // Re-attach settings listeners
-            this.attachSettingsListeners();
-            
-            this.messageInput.focus();
-        }
-    }
-
-    showSettings() {
-        if (this.settingsModal) {
-            this.settingsModal.classList.remove('hidden');
-            this.settingsModal.style.display = 'flex';
-            requestAnimationFrame(() => {
-                this.settingsModal.classList.add('flex');
-                this.settingsModal.style.opacity = '1';
-            });
-            if (this.currentUser) {
-                this.showSignedInState();
-            } else {
-                this.showSignedOutState();
-            }
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    this.hideSettings();
-                }
-            });
-        }
-    }
-
-    attachSettingsListeners() {
-        if (this.settingsButton) {
-            this.settingsButton.addEventListener('click', () => {
-                this.showSettings();
-            });
-        }
-
-        if (this.closeSettingsModal) {
-            this.closeSettingsModal.addEventListener('click', () => {
-                this.hideSettings();
-            });
-        }
-
-        if (this.settingsModal) {
-            this.settingsModal.addEventListener('click', (e) => {
-                if (e.target === this.settingsModal) {
-                    this.hideSettings();
-                }
-            });
-        }
-    }
-    
-    toggleSidebar() {
-        this.isSidebarOpen = !this.isSidebarOpen;
-        const sidebar = document.getElementById('chatHistorySidebar');
-        const backdrop = sidebar.querySelector('.bg-black\\/50');
-        const panel = sidebar.querySelector('.glass-effect');
-        
-        if (this.isSidebarOpen) {
-            sidebar.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-            // Wait a bit for the display:none to be removed
-            requestAnimationFrame(() => {
-                if (backdrop) backdrop.classList.add('opacity-100');
-                if (panel) {
-                    panel.classList.add('opacity-100');
-                    panel.classList.remove('translate-x-full');
-                }
-            });
-        } else {
-            this.closeSidebar();
-        }
-    }
-
-    closeSidebar() {
-        if (this.isSidebarOpen) {
-            this.isSidebarOpen = false;
-            const sidebar = document.getElementById('chatHistorySidebar');
-            const backdrop = sidebar.querySelector('.bg-black\\/50');
-            const panel = sidebar.querySelector('.glass-effect');
-            
-            if (backdrop) backdrop.classList.remove('opacity-100');
-            if (panel) {
-                panel.classList.remove('opacity-100');
-                panel.classList.add('translate-x-full');
-            }
-            document.body.style.overflow = '';
-            
-            // Wait for the transition to complete before hiding
-            setTimeout(() => {
-                sidebar.classList.add('hidden');
-            }, 300);
-        }
-    }
-
-
-    hideSettings() {
-        if (this.settingsModal) {
-            this.settingsModal.style.opacity = '0';
-            setTimeout(() => {
-                this.settingsModal.classList.add('hidden');
-                this.settingsModal.classList.remove('flex');
-                this.settingsModal.style.display = 'none';
-            }, 200);
-        }
-    }
-
-    showSignedInState() {
-        const signedOutState = document.getElementById('signedOutState');
-        const signedInState = document.getElementById('signedInState');
-
-        if (signedOutState) signedOutState.classList.add('hidden');
-        if (signedInState) {
-            signedInState.classList.remove('hidden');
-
-            // Update user info in settings
-            const avatar = document.getElementById('settingsUserAvatar');
-            const name = document.getElementById('settingsUserName');
-            const email = document.getElementById('settingsUserEmail');
-
-            if (avatar) avatar.src = this.currentUser.picture || '';
-            if (name) name.textContent = this.currentUser.name || '';
-            if (email) email.textContent = this.currentUser.email || '';
-        }
-    }
-
-    loadChatHistory() {
-        const chatHistoryList = document.getElementById('chatHistoryList');
-        if (!chatHistoryList || !this.currentUser) return;
-
-        // Clear existing history
-        chatHistoryList.innerHTML = '';
-
-        // Get saved chat sessions
-        const savedSessions = localStorage.getItem(`chatSessions_${this.currentUser.id}`);
-        const sessions = savedSessions ? JSON.parse(savedSessions) : [];
-
-        sessions.forEach((session, index) => {
-            const sessionElement = document.createElement('div');
-            sessionElement.className = 'p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-all';
-
-            const date = new Date(session.timestamp);
-            const formattedDate = date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-            });
-
-            sessionElement.innerHTML = `
-                <div class="flex items-center justify-between">
-                    <div>
-                        <div class="font-medium text-gray-800">Chat ${index + 1}</div>
-                        <div class="text-sm text-gray-500">${formattedDate}</div>
+                <div id="typingIndicator" class="px-8 pb-4 hidden">
+                    <div class="flex justify-start">
+                        <div class="ai-message rounded-3xl rounded-bl-lg px-8 py-6">
+                            <div class="flex space-x-2">
+                                <div class="w-3 h-3 bg-gray-400 rounded-full typing-indicator"></div>
+                                <div class="w-3 h-3 bg-gray-400 rounded-full typing-indicator" style="animation-delay: 0.2s;"></div>
+                                <div class="w-3 h-3 bg-gray-400 rounded-full typing-indicator" style="animation-delay: 0.4s;"></div>
+                            </div>
+                        </div>
                     </div>
-                    <button class="text-gray-400 hover:text-gray-600" data-session-id="${index}">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
+                </div>
+
+                <div class="input-container border-t border-gray-200 p-8">
+                    <div class="flex space-x-4">
+                        <input type="text" id="messageInput" placeholder="Type your message here..." class="message-input flex-1 bg-white border-2 border-gray-200 rounded-2xl px-6 py-4 text-gray-800 placeholder-gray-500 transition-all duration-300 focus:border-indigo-500 focus:ring-0"
+                            maxlength="1000">
+                        <button id="sendButton" class="send-button text-white px-8 py-4 rounded-2xl font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        Send
                     </button>
-                </div>
-            `;
-
-            // Add click event to load this chat session
-            sessionElement.addEventListener('click', () => {
-                this.loadChatSession(session);
-            });
-
-            chatHistoryList.appendChild(sessionElement);
-        });
-    }
-
-    loadChatSession(session) {
-        if (!session || !session.messages) return;
-
-        // Clear current chat
-        this.conversationHistory = [];
-        this.chatMessages.innerHTML = '';
-
-        // Load messages from session
-        session.messages.forEach(msg => {
-            this.addMessage(msg.content, msg.role);
-            this.conversationHistory.push(msg);
-        });
-
-        this.scrollToBottom();
-    }
-
-    saveChatSession() {
-        if (!this.currentUser || !this.autoSave || this.conversationHistory.length === 0) return;
-
-        const savedSessions = localStorage.getItem(`chatSessions_${this.currentUser.id}`);
-        let sessions = savedSessions ? JSON.parse(savedSessions) : [];
-
-        // Add new session
-        sessions.push({
-            timestamp: new Date().toISOString(),
-            messages: this.conversationHistory
-        });
-
-        // Keep only last 10 sessions
-        if (sessions.length > 10) {
-            sessions = sessions.slice(-10);
-        }
-
-        localStorage.setItem(`chatSessions_${this.currentUser.id}`, JSON.stringify(sessions));
-        this.loadChatHistory(); // Refresh the history sidebar
-    }
-
-    showSignedOutState() {
-        const signedOutState = document.getElementById('signedOutState');
-        const signedInState = document.getElementById('signedInState');
-
-        if (signedOutState) signedOutState.classList.remove('hidden');
-        if (signedInState) signedInState.classList.add('hidden');
-    }
-
-    saveConversationHistory() {
-        if (this.currentUser && this.autoSave) {
-            localStorage.setItem(
-                `chatHistory_${this.currentUser.id}`,
-                JSON.stringify(this.conversationHistory)
-            );
-        }
-    }
-
-    loadConversationHistory() {
-        this.chatMessages.innerHTML = ''; // Clear existing messages
-        this.conversationHistory.forEach(msg => {
-            this.addMessage(msg.content, msg.role);
-        });
-        this.scrollToBottom();
-    }
-
-    initializeGoogleAuth() {
-        // Check if user is already logged in (from localStorage)
-        const savedUser = localStorage.getItem('aiChatUser');
-        if (savedUser) {
-            this.currentUser = JSON.parse(savedUser);
-            this.showChatInterface();
-        } else {
-            this.showLoginScreen();
-        }
-    }
-
-    initiateGoogleSignIn() {
-        // This will be called by the custom button
-        // The actual sign-in is handled by the Google Sign-In button
-        console.log('Initiating Google Sign-In...');
-    }
-
-    showLoginScreen() {
-        if (this.loginScreen) {
-            this.loginScreen.classList.remove('hidden');
-        }
-        if (this.chatInterface) {
-            this.chatInterface.classList.add('hidden');
-        }
-    }
-
-    showChatInterface() {
-        if (this.welcomeScreen) {
-            this.welcomeScreen.classList.add('hidden');
-        }
-        if (this.chatInterface) {
-            this.chatInterface.classList.remove('hidden');
-        }
-
-        // Update user info in the interface
-        if (this.currentUser) {
-            if (this.userAvatar) {
-                this.userAvatar.src = this.currentUser.picture || '';
-            }
-            if (this.userName) {
-                this.userName.textContent = this.currentUser.name || '';
-            }
-            if (this.userEmail) {
-                this.userEmail.textContent = this.currentUser.email || '';
-            }
-            if (this.userInfo) {
-                this.userInfo.classList.remove('hidden');
-            }
-            this.loadChatHistory();
-        }
-
-        this.focusInput();
-    }
-    
-    signOut() {
-        // Clear user data
-        this.currentUser = null;
-        localStorage.removeItem('aiChatUser');
-    
-        // Update UI
-        const userInfo = document.getElementById('userInfo');
-        const chatHistorySidebar = document.getElementById('chatHistorySidebar');
-    
-        if (userInfo) {
-            userInfo.classList.add('hidden');
-        }
-    
-        if (chatHistorySidebar) {
-            chatHistorySidebar.classList.add('hidden');
-        }
-    
-        // Show signed out state in settings
-        this.showSignedOutState();
-    
-        // Clear conversation history if auto-save was enabled
-        if (this.autoSave) {
-            this.clearConversation();
-        }
-    
-        // Sign out from Google
-        if (window.google && window.google.accounts) {
-            window.google.accounts.id.disableAutoSelect();
-        }
-    }
-
-    focusInput() {
-        if (this.messageInput) {
-            this.messageInput.focus();
-        }
-    }
-
-    async sendMessage() {
-        const message = this.messageInput.value.trim();
-        if (!message) return;
-
-        // Disable input while processing
-        this.setInputState(false);
-
-        // Add user message to chat
-        this.addMessage(message, 'user');
-
-        // Clear input
-        this.messageInput.value = '';
-
-        // Show typing indicator
-        this.showTypingIndicator();
-
-        try {
-            // Send to API
-            const response = await this.callAPI(message);
-
-            // Hide typing indicator
-            this.hideTypingIndicator();
-
-            // Add AI response to chat
-            this.addMessage(response, 'assistant');
-            
-            this.saveConversationHistory();
-
-
-
-        } catch (error) {
-            console.error('Error:', error);
-            this.hideTypingIndicator();
-            this.showError(error.message || 'An error occurred while processing your request.');
-        } finally {
-            // Re-enable input
-            this.setInputState(true);
-            this.focusInput();
-        }
-    }
-
-    async callAPI(message) {
-        // Add message to conversation history
-        this.conversationHistory.push({
-            role: 'user',
-            content: message
-        });
-
-        const requestBody = {
-            model: this.model,
-            messages: this.conversationHistory,
-            max_tokens: 1000,
-            temperature: 0.7,
-            stream: false
-        };
-
-        const response = await fetch(this.baseUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey}`
-            },
-            body: JSON.stringify(requestBody)
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error((errorData.error && errorData.error.message) || `HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-            throw new Error('Invalid response format from API');
-        }
-
-        const assistantMessage = data.choices[0].message.content;
-
-        // Add assistant response to conversation history
-        this.conversationHistory.push({
-            role: 'assistant',
-            content: assistantMessage
-        });
-
-        // Keep conversation history manageable (last 20 messages)
-        if (this.conversationHistory.length > 20) {
-            this.conversationHistory = this.conversationHistory.slice(-20);
-        }
-
-        return assistantMessage;
-    }
-
-    addMessage(content, role) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message-bubble flex';
-
-        if (role === 'user') {
-            messageDiv.classList.add('justify-end');
-            messageDiv.innerHTML = `
-                <div class="user-message rounded-3xl rounded-br-lg px-8 py-6 max-w-md">
-                    <p class="font-medium">${this.escapeHtml(content)}</p>
-                </div>
-            `;
-        } else {
-            messageDiv.classList.add('justify-start');
-            messageDiv.innerHTML = `
-                <div class="ai-message rounded-3xl rounded-bl-lg px-8 py-6 max-w-md">
-                    <p class="text-gray-700 font-medium">${this.formatMessage(content)}</p>
-                </div>
-            `;
-        }
-
-        this.chatMessages.appendChild(messageDiv);
-        this.scrollToBottom();
-    }
-
-    formatMessage(content) {
-        // Basic formatting for AI responses
-        let formatted = this.escapeHtml(content);
-
-        // Convert line breaks to <br>
-        formatted = formatted.replace(/\n/g, '<br>');
-
-        // Bold text **text**
-        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-        // Italic text *text*
-        formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
-        return formatted;
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    setInputState(enabled) {
-        this.messageInput.disabled = !enabled;
-        this.sendButton.disabled = !enabled || this.messageInput.value.trim().length === 0;
-
-        if (enabled) {
-            this.messageInput.classList.remove('opacity-50');
-            if (this.messageInput.value.trim().length > 0) {
-                this.sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-        } else {
-            this.messageInput.classList.add('opacity-50');
-            this.sendButton.classList.add('opacity-50', 'cursor-not-allowed');
-        }
-    }
-
-    showTypingIndicator() {
-        this.typingIndicator.classList.remove('hidden');
-        this.scrollToBottom();
-    }
-
-    hideTypingIndicator() {
-        this.typingIndicator.classList.add('hidden');
-    }
-
-    showError(message) {
-        this.errorMessage.textContent = message;
-        this.errorModal.classList.remove('hidden');
-        this.errorModal.classList.add('flex');
-    }
-
-    hideErrorModal() {
-        this.errorModal.classList.add('hidden');
-        this.errorModal.classList.remove('flex');
-    }
-
-    scrollToBottom() {
-        setTimeout(() => {
-            this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
-        }, 100);
-    }
-
-    // Method to clear conversation
-    clearConversation() {
-        this.conversationHistory = [];
-        this.chatMessages.innerHTML = `
-            <div class="message-bubble flex justify-start">
-                <div class="ai-message welcome-message rounded-3xl rounded-bl-lg px-8 py-6 max-w-md">
-                    <p class="text-gray-700 font-medium">
-                        Hello! I'm your AI assistant. How can I help you today?
-                    </p>
+                    </div>
+                    <div class="mt-3 text-sm text-gray-500 text-center">
+                        Press Enter to send • Max 1000 characters
+                    </div>
                 </div>
             </div>
-        `;
-        if (this.currentUser) {
-            localStorage.removeItem(`chatHistory_${this.currentUser.id}`);
-            this.saveChatSession();
-        }
-    }
-}
+        </div>
 
-// Global callback function for Google Sign-In
-window.handleCredentialResponse = function(response) {
-    try {
-        // Decode the JWT token to get user information
-        const payload = JSON.parse(atob(response.credential.split('.')[1]));
+        <div class="text-center mt-8 text-gray-500 text-sm">
+            <p>Secure & Private</p>
+        </div>
 
-        const userData = {
-            id: payload.sub,
-            name: payload.name,
-            email: payload.email,
-            picture: payload.picture,
-            given_name: payload.given_name,
-            family_name: payload.family_name
-        };
+        <div id="settingsModal" class="fixed inset-0 error-modal-bg hidden items-center justify-center z-50 transition-all duration-200 opacity-0">
+            <div class="error-modal-content rounded-3xl p-8 max-w-lg mx-4 w-full">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800">Settings</h3>
+                    <button id="closeSettingsModal" class="p-2 text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+                </div>
 
-        // Save user data
-        window.aiChat.currentUser = userData;
-        localStorage.setItem('aiChatUser', JSON.stringify(userData));
+                <div class="space-y-6">
+                    <div class="border-b border-gray-200 pb-6">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4">Account</h4>
+                        <div id="accountSection">
+                            <div id="signedOutState" class="space-y-4">
+                                <p class="text-gray-600 text-sm">Sign in to sync your conversations across devices and access advanced features.</p>
 
-        // Show chat interface
-        window.aiChat.showChatInterface();
-        window.aiChat.hideSettings();
+                                <div id="g_id_onload" data-client_id="915826743225-3giml6kn6q9iu0j6i920275k4v04v3qq.apps.googleusercontent.com" data-context="signin" data-ux_mode="popup" data-callback="handleCredentialResponse" data-auto_prompt="false">
+                                </div>
 
+                                <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="left">
+                                </div>
+                            </div>
 
-        console.log('User signed in successfully:', userData.name);
-    } catch (error) {
-        console.error('Error handling Google Sign-In:', error);
-        window.aiChat.showError('Failed to sign in with Google. Please try again.');
-    }
-};
+                            <div id="signedInState" class="space-y-4 hidden">
+                                <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl">
+                                    <img id="settingsUserAvatar" src="" alt="User Avatar" class="w-12 h-12 rounded-full">
+                                    <div class="flex-1">
+                                        <div id="settingsUserName" class="font-semibold text-gray-800"></div>
+                                        <div id="settingsUserEmail" class="text-sm text-gray-600"></div>
+                                    </div>
+                                </div>
+                                <button id="signOutButton" class="w-full bg-red-50 text-red-600 py-3 px-4 rounded-xl font-medium hover:bg-red-100 transition-all duration-300">
+                                Sign Out
+                            </button>
+                            </div>
+                        </div>
+                    </div>
 
-// Initialize the chat when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-    window.aiChat = new AIChat();
-});
+                    <div class="border-b border-gray-200 pb-6">
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4">Chat Settings</h4>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="font-medium text-gray-800">Auto-save conversations</div>
+                                    <div class="text-sm text-gray-600">Automatically save chats to your Google account</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="autoSaveToggle" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
+                            </div>
+                        </div>
+                    </div>
 
-// Add keyboard shortcut for clearing conversation (Ctrl+L or Cmd+L)
-document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
-        e.preventDefault();
-        if (window.aiChat && confirm('Clear conversation history?')) {
-            window.aiChat.clearConversation();
-        }
-    }
-});
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-4">Support</h4>
+                        <div class="space-y-3">
+                            <a href="mailto:at41rv@gmail.com" class="flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-50 transition-all">
+                                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                            </svg>
+                                <div>
+                                    <div class="font-medium text-gray-800">Contact Support</div>
+                                    <div class="text-sm text-gray-600">at41rv@gmail.com</div>
+                                </div>
+                            </a>
+                            <div class="text-xs text-gray-500 p-3 bg-gray-50 rounded-xl">
+                                <p><strong>Version:</strong> 1.0</p>
+                                <p><strong>Last Update:</strong> Today </p>
+                                <p><strong>Privacy:</strong> Your conversations are secure and private</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-// End of script
+        <div id="errorModal" class="fixed inset-0 error-modal-bg hidden items-center justify-center z-50">
+            <div class="error-modal-content rounded-3xl p-8 max-w-md mx-4">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">Error</h3>
+                <p id="errorMessage" class="text-gray-600 mb-6 leading-relaxed"></p>
+                <button id="closeErrorModal" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-3 rounded-2xl font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all duration-300">
+                Close
+            </button>
+            </div>
+        </div>
+
+        <script src="script.js"></script>
+</body>
+
+</html>
