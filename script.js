@@ -210,7 +210,7 @@ class AIChat {
                     <div class="message-bubble flex justify-start">
                         <div class="ai-message welcome-message rounded-3xl rounded-bl-lg px-8 py-6 max-w-md">
                             <p class="text-gray-700 font-medium">
-                                Hello! I'm your AI assistant. How can I help you today?
+                                Hello! I'm At41rv AI. How can I help you today?
                             </p>
                         </div>
                     </div>
@@ -611,6 +611,27 @@ class AIChat {
      * @param {string|null} searchContext - The search results, if any.
      */
     async callAPI(message, searchContext = null) {
+        // Check for model-related questions first
+        const lowerMsg = message.toLowerCase();
+        if (
+            lowerMsg.includes('model name') ||
+            lowerMsg.includes('who is at41rv') ||
+            lowerMsg.includes('what is your model') ||
+            lowerMsg.includes('what is your modal') ||
+            lowerMsg.includes('what is your name') ||
+            lowerMsg.includes('who are you')
+        ) {
+            const response = "See your Face Then ask like this quesions - At41rv";
+            this.conversationHistory.push({
+                role: 'user',
+                content: message
+            }, {
+                role: 'assistant',
+                content: response
+            });
+            return response;
+        }
+
         const userMessage = {
             role: 'user',
             content: message
@@ -619,7 +640,7 @@ class AIChat {
 
         let apiMessages = [...this.conversationHistory];
 
-        // NEW: If there is search context, augment the prompt for the AI
+        // If there is search context, augment the prompt for the AI
         if (searchContext) {
             const augmentedContent = `Based on the following information: "${searchContext}", please answer this question: "${message}"`;
             // Replace the last user message with the augmented one
@@ -763,7 +784,7 @@ class AIChat {
             <div class="message-bubble flex justify-start">
                 <div class="ai-message welcome-message rounded-3xl rounded-bl-lg px-8 py-6 max-w-md">
                     <p class="text-gray-700 font-medium">
-                        Hello! I'm your AI assistant. How can I help you today?
+                        Hello! I'm At41rv AI. How can I help you today?
                     </p>
                 </div>
             </div>
