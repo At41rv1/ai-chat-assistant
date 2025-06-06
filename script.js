@@ -614,14 +614,16 @@ class AIChat {
         // Check for model-related questions first
         const lowerMsg = message.toLowerCase();
         if (
-            lowerMsg.includes('model name') ||
-            lowerMsg.includes('who is at41rv') ||
-            lowerMsg.includes('what is your model') ||
-            lowerMsg.includes('what is your modal') ||
+            lowerMsg.includes('model') ||
+            lowerMsg.includes('at41rv') ||
+            lowerMsg.includes('what are you') ||
+            lowerMsg.includes('tell me about') ||
             lowerMsg.includes('what is your name') ||
-            lowerMsg.includes('who are you')
+            lowerMsg.includes('who are you') ||
+            lowerMsg.includes('what model') ||
+            lowerMsg.includes('which model')
         ) {
-            const response = "See your Face Then ask like this quesions - At41rv";
+            const response = "At41rv AI is best modal made by Atharv\nGoogle verified, you can ask anything";
             this.conversationHistory.push({
                 role: 'user',
                 content: message
