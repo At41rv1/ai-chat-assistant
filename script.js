@@ -1,5 +1,9 @@
 class AIChat {
     constructor() {
+        // !!! SECURITY WARNING !!!
+        // EXPOSING YOUR API KEY IN CLIENT-SIDE CODE IS A SEVERE SECURITY RISK.
+        // Anyone can view your source code and steal this key.
+        // It is strongly recommended to use a backend proxy to handle API requests securely.
         this.apiKey = 'ddc-a4f-796282249bb7466383eaabebc348d027';
         this.baseUrl = 'https://api.a4f.co/v1/chat/completions';
         this.model = 'provider-4/gpt-4.1';
@@ -98,26 +102,25 @@ class AIChat {
         // Attach settings related listeners
         this.attachSettingsListeners();
 
-        // Mobile sidebar toggle
-        const toggleSidebarButton = document.getElementById('toggleSidebarButton');
-        const closeSidebarButton = document.getElementById('closeSidebarButton');
-
-        if (toggleSidebarButton) {
-            toggleSidebarButton.addEventListener('click', () => this.toggleSidebar());
+        // Chat history toggle
+        if (this.historyButton) {
+            this.historyButton.addEventListener('click', () => this.toggleSidebar());
         }
 
-        if (closeSidebarButton) {
-            closeSidebarButton.addEventListener('click', () => this.closeSidebar());
+        if (this.closeHistoryButton) {
+            this.closeHistoryButton.addEventListener('click', () => this.toggleSidebar());
         }
 
         // Close sidebar when clicking outside
         document.addEventListener('click', (e) => {
-            if (this.isSidebarOpen &&
+            if (this.chatHistorySidebar &&
+                this.chatHistorySidebar.classList.contains('active') &&
                 !e.target.closest('#chatHistorySidebar') &&
-                !e.target.closest('#toggleSidebarButton')) {
-                this.closeSidebar();
+                !e.target.closest('#historyButton')) {
+                this.toggleSidebar();
             }
         });
+
 
         if (this.autoSaveToggle) {
             this.autoSaveToggle.addEventListener('change', (e) => {
@@ -168,9 +171,9 @@ class AIChat {
                 this.sendButton.disabled = message.length === 0;
 
                 if (message.length > 0) {
-                    this.sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    this.sendButton.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
                 } else {
-                    this.sendButton.classList.add('opacity-50', 'cursor-not-allowed');
+                    this.sendButton.classList.add('disabled:opacity-50', 'disabled:cursor-not-allowed');
                 }
             });
         }
@@ -187,15 +190,8 @@ class AIChat {
                 }
             });
         }
-
-        if (this.historyButton) {
-            this.historyButton.addEventListener('click', () => this.toggleChatHistory());
-        }
-
-        if (this.closeHistoryButton) {
-            this.closeHistoryButton.addEventListener('click', () => this.toggleChatHistory());
-        }
     }
+
 
     startChatting() {
         if (this.welcomeScreen) {
@@ -205,25 +201,17 @@ class AIChat {
             this.chatInterface.classList.remove('hidden');
 
             // Initialize chat with welcome message if no history
-            if (this.chatMessages && this.chatMessages.children.length === 0) {
+            if (this.chatMessages && this.conversationHistory.length === 0) {
                 this.chatMessages.innerHTML = `
                     <div class="message-bubble flex justify-start">
-                        <div class="ai-message welcome-message rounded-3xl rounded-bl-lg px-8 py-6 max-w-md">
-                            <p class="text-gray-700 font-medium">
+                        <div class="ai-message welcome-message rounded-2xl rounded-bl-lg px-8 py-6 max-w-2xl backdrop-blur-sm">
+                            <p class="text-gray-700 text-lg font-medium leading-relaxed">
                                 Hello! I'm At41rv AI. How can I help you today?
                             </p>
                         </div>
                     </div>
                 `;
             }
-
-            // Re-initialize elements that are now visible
-            this.settingsButton = document.getElementById('settingsButton');
-            this.settingsModal = document.getElementById('settingsModal');
-            this.closeSettingsModal = document.getElementById('closeSettingsModal');
-
-            // Re-attach settings listeners
-            this.attachSettingsListeners();
 
             this.messageInput.focus();
         }
@@ -246,6 +234,8 @@ class AIChat {
                 if (e.key === 'Escape') {
                     this.hideSettings();
                 }
+            }, {
+                once: true
             });
         }
     }
@@ -273,47 +263,15 @@ class AIChat {
     }
 
     toggleSidebar() {
-        this.isSidebarOpen = !this.isSidebarOpen;
-        const sidebar = document.getElementById('chatHistorySidebar');
-        const backdrop = sidebar.querySelector('.bg-black\\/50');
-        const panel = sidebar.querySelector('.glass-effect');
-
-        if (this.isSidebarOpen) {
-            sidebar.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-            // Wait a bit for the display:none to be removed
-            requestAnimationFrame(() => {
-                if (backdrop) backdrop.classList.add('opacity-100');
-                if (panel) {
-                    panel.classList.add('opacity-100');
-                    panel.classList.remove('translate-x-full');
-                }
-            });
-        } else {
-            this.closeSidebar();
-        }
-    }
-
-    closeSidebar() {
-        if (this.isSidebarOpen) {
-            this.isSidebarOpen = false;
-            const sidebar = document.getElementById('chatHistorySidebar');
-            const backdrop = sidebar.querySelector('.bg-black\\/50');
-            const panel = sidebar.querySelector('.glass-effect');
-
-            if (backdrop) backdrop.classList.remove('opacity-100');
-            if (panel) {
-                panel.classList.remove('opacity-100');
-                panel.classList.add('translate-x-full');
+        if (this.chatHistorySidebar) {
+            this.isSidebarOpen = !this.isSidebarOpen;
+            this.chatHistorySidebar.classList.toggle('active');
+            if (this.isSidebarOpen) {
+                this.loadChatHistory();
             }
-            document.body.style.overflow = '';
-
-            // Wait for the transition to complete before hiding
-            setTimeout(() => {
-                sidebar.classList.add('hidden');
-            }, 300);
         }
     }
+
 
 
     hideSettings() {
@@ -348,84 +306,66 @@ class AIChat {
 
     loadChatHistory() {
         const chatHistoryList = document.getElementById('chatHistoryList');
-        if (!chatHistoryList || !this.currentUser) return;
+        if (!chatHistoryList) return;
 
-        // Clear existing history
         chatHistoryList.innerHTML = '';
 
-        // Get saved chat sessions
-        const savedSessions = localStorage.getItem(`chatSessions_${this.currentUser.id}`);
-        const sessions = savedSessions ? JSON.parse(savedSessions) : [];
+        const sessions = this.conversationHistory.reduce((acc, msg, index) => {
+            if (msg.role === 'user') {
+                acc.push({
+                    id: index,
+                    message: msg.content,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            return acc;
+        }, []);
 
-        sessions.forEach((session, index) => {
+        if (sessions.length === 0) {
+            chatHistoryList.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <p>No chat history yet</p>
+                </div>
+            `;
+            return;
+        }
+
+        sessions.forEach((session) => {
+            const messagePreview = session.message.length > 50 ?
+                session.message.substring(0, 50) + '...' :
+                session.message;
+
             const sessionElement = document.createElement('div');
-            sessionElement.className = 'p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-all';
+            sessionElement.className = 'p-4 bg-white rounded-xl shadow-sm border border-gray-100 hover:border-gray-200 transition-all cursor-pointer';
 
             const date = new Date(session.timestamp);
-            const formattedDate = date.toLocaleDateString('en-US', {
+            const formattedDate = date.toLocaleString('en-US', {
                 month: 'short',
                 day: 'numeric',
-                year: 'numeric'
+                hour: '2-digit',
+                minute: '2-digit'
             });
 
             sessionElement.innerHTML = `
-                <div class="flex items-center justify-between">
-                    <div>
-                        <div class="font-medium text-gray-800">Chat ${index + 1}</div>
-                        <div class="text-sm text-gray-500">${formattedDate}</div>
-                    </div>
-                    <button class="text-gray-400 hover:text-gray-600" data-session-id="${index}">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </button>
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-sm font-medium text-gray-900">Chat ${session.id + 1}</div>
+                    <div class="text-xs text-gray-500">${formattedDate}</div>
                 </div>
+                <p class="text-sm text-gray-600">${messagePreview}</p>
             `;
 
-            // Add click event to load this chat session
             sessionElement.addEventListener('click', () => {
-                this.loadChatSession(session);
+                const messageElement = this.chatMessages.children[session.id + 1]; // +1 to account for initial AI message
+                if (messageElement) {
+                    messageElement.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                }
+                this.toggleSidebar();
             });
 
             chatHistoryList.appendChild(sessionElement);
         });
-    }
-
-    loadChatSession(session) {
-        if (!session || !session.messages) return;
-
-        // Clear current chat
-        this.conversationHistory = [];
-        this.chatMessages.innerHTML = '';
-
-        // Load messages from session
-        session.messages.forEach(msg => {
-            this.addMessage(msg.content, msg.role);
-            this.conversationHistory.push(msg);
-        });
-
-        this.scrollToBottom();
-    }
-
-    saveChatSession() {
-        if (!this.currentUser || !this.autoSave || this.conversationHistory.length === 0) return;
-
-        const savedSessions = localStorage.getItem(`chatSessions_${this.currentUser.id}`);
-        let sessions = savedSessions ? JSON.parse(savedSessions) : [];
-
-        // Add new session
-        sessions.push({
-            timestamp: new Date().toISOString(),
-            messages: this.conversationHistory
-        });
-
-        // Keep only last 10 sessions
-        if (sessions.length > 10) {
-            sessions = sessions.slice(-10);
-        }
-
-        localStorage.setItem(`chatSessions_${this.currentUser.id}`, JSON.stringify(sessions));
-        this.loadChatHistory(); // Refresh the history sidebar
     }
 
     showSignedOutState() {
@@ -446,37 +386,12 @@ class AIChat {
     }
 
     loadConversationHistory() {
-        this.chatMessages.innerHTML = ''; // Clear existing messages
+        this.chatMessages.innerHTML = '';
+        this.addMessage("Hello! I'm At41rv AI. How can I help you today?", 'assistant');
         this.conversationHistory.forEach(msg => {
             this.addMessage(msg.content, msg.role);
         });
         this.scrollToBottom();
-    }
-
-    initializeGoogleAuth() {
-        // Check if user is already logged in (from localStorage)
-        const savedUser = localStorage.getItem('aiChatUser');
-        if (savedUser) {
-            this.currentUser = JSON.parse(savedUser);
-            this.showChatInterface();
-        } else {
-            this.showLoginScreen();
-        }
-    }
-
-    initiateGoogleSignIn() {
-        // This will be called by the custom button
-        // The actual sign-in is handled by the Google Sign-In button
-        console.log('Initiating Google Sign-In...');
-    }
-
-    showLoginScreen() {
-        if (this.loginScreen) {
-            this.loginScreen.classList.remove('hidden');
-        }
-        if (this.chatInterface) {
-            this.chatInterface.classList.add('hidden');
-        }
     }
 
     showChatInterface() {
@@ -487,52 +402,31 @@ class AIChat {
             this.chatInterface.classList.remove('hidden');
         }
 
-        // Update user info in the interface
         if (this.currentUser) {
-            if (this.userAvatar) {
-                this.userAvatar.src = this.currentUser.picture || '';
-            }
-            if (this.userName) {
-                this.userName.textContent = this.currentUser.name || '';
-            }
-            if (this.userEmail) {
-                this.userEmail.textContent = this.currentUser.email || '';
-            }
-            if (this.userInfo) {
-                this.userInfo.classList.remove('hidden');
-            }
-            this.loadChatHistory();
+            if (this.userAvatar) this.userAvatar.src = this.currentUser.picture || '';
+            if (this.userName) this.userName.textContent = this.currentUser.name || '';
+            if (this.userEmail) this.userEmail.textContent = this.currentUser.email || '';
+            if (this.userInfo) this.userInfo.classList.remove('hidden');
+            this.loadSavedSettings();
         }
 
         this.focusInput();
     }
 
     signOut() {
-        // Clear user data
+        const previousUserId = this.currentUser.id;
+        if (this.autoSave) {
+            localStorage.removeItem(`chatHistory_${previousUserId}`);
+        }
+
         this.currentUser = null;
         localStorage.removeItem('aiChatUser');
 
-        // Update UI
-        const userInfo = document.getElementById('userInfo');
-        const chatHistorySidebar = document.getElementById('chatHistorySidebar');
+        if (this.userInfo) this.userInfo.classList.add('hidden');
 
-        if (userInfo) {
-            userInfo.classList.add('hidden');
-        }
-
-        if (chatHistorySidebar) {
-            chatHistorySidebar.classList.add('hidden');
-        }
-
-        // Show signed out state in settings
         this.showSignedOutState();
+        this.clearConversation();
 
-        // Clear conversation history if auto-save was enabled
-        if (this.autoSave) {
-            this.clearConversation();
-        }
-
-        // Sign out from Google
         if (window.google && window.google.accounts) {
             window.google.accounts.id.disableAutoSelect();
         }
@@ -544,31 +438,19 @@ class AIChat {
         }
     }
 
-    /**
-     * NEW: Checks if the user's message requires a web search.
-     * @param {string} message - The user's input message.
-     * @returns {boolean} - True if a search is needed, false otherwise.
-     */
     checkForSearchIntent(message) {
         const searchKeywords = ['weather', 'news', 'latest', 'date', 'time', 'temperature', 'forecast', 'what is', 'who is', 'define'];
         const lowerCaseMessage = message.toLowerCase();
         return searchKeywords.some(keyword => lowerCaseMessage.includes(keyword));
     }
 
-    /**
-     * NEW: A mock function to simulate a web search.
-     * In a real application, you would replace this with an actual API call to a search engine.
-     * @param {string} query - The search query.
-     * @returns {Promise<string>} - A promise that resolves to the simulated search results.
-     */
     async performWebSearch(query) {
         console.log(`Performing web search for: ${query}`);
-        // This is a simulation. Replace with your actual search API call.
         if (query.toLowerCase().includes('date')) {
             return `Simulated Search Result: Today's date is ${new Date().toLocaleDateString()}.`;
         }
         if (query.toLowerCase().includes('weather')) {
-            return "Simulated Search Result: The weather is currently sunny with a temperature of 35°C.";
+            return "Simulated Search Result: The weather is currently sunny with a temperature of 25°C.";
         }
         return `No specific live result found for "${query}". General web search results would be here.`;
     }
@@ -577,14 +459,17 @@ class AIChat {
         const message = this.messageInput.value.trim();
         if (!message) return;
 
-        this.setInputState(false);
         this.addMessage(message, 'user');
+        this.conversationHistory.push({
+            role: 'user',
+            content: message
+        });
+        this.setInputState(false);
         this.messageInput.value = '';
         this.showTypingIndicator();
 
         try {
             let searchContext = null;
-            // NEW: Check for search intent before calling the API
             if (this.checkForSearchIntent(message)) {
                 searchContext = await this.performWebSearch(message);
             }
@@ -593,6 +478,10 @@ class AIChat {
 
             this.hideTypingIndicator();
             this.addMessage(response, 'assistant');
+            this.conversationHistory.push({
+                role: 'assistant',
+                content: response
+            });
             this.saveConversationHistory();
 
         } catch (error) {
@@ -605,13 +494,7 @@ class AIChat {
         }
     }
 
-    /**
-     * MODIFIED: Now accepts an optional searchContext.
-     * @param {string} message - The user's message.
-     * @param {string|null} searchContext - The search results, if any.
-     */
     async callAPI(message, searchContext = null) {
-        // Check for model-related questions first
         const lowerMsg = message.toLowerCase();
         if (
             lowerMsg.includes('model') ||
@@ -623,29 +506,13 @@ class AIChat {
             lowerMsg.includes('what model') ||
             lowerMsg.includes('which model')
         ) {
-            const response = "At41rv AI is best modal made by Atharv\nGoogle verified, you can ask anything";
-            this.conversationHistory.push({
-                role: 'user',
-                content: message
-            }, {
-                role: 'assistant',
-                content: response
-            });
-            return response;
+            return "At41rv AI is the best model made by Atharv.\nGoogle-verified, you can ask anything.";
         }
-
-        const userMessage = {
-            role: 'user',
-            content: message
-        };
-        this.conversationHistory.push(userMessage);
 
         let apiMessages = [...this.conversationHistory];
 
-        // If there is search context, augment the prompt for the AI
         if (searchContext) {
             const augmentedContent = `Based on the following information: "${searchContext}", please answer this question: "${message}"`;
-            // Replace the last user message with the augmented one
             apiMessages[apiMessages.length - 1] = {
                 role: 'user',
                 content: augmentedContent
@@ -677,13 +544,6 @@ class AIChat {
         const data = await response.json();
         const assistantMessage = data.choices[0].message.content;
 
-        // Add assistant response to conversation history
-        this.conversationHistory.push({
-            role: 'assistant',
-            content: assistantMessage
-        });
-
-        // Keep conversation history manageable (last 20 messages)
         if (this.conversationHistory.length > 20) {
             this.conversationHistory = this.conversationHistory.slice(-20);
         }
@@ -699,14 +559,14 @@ class AIChat {
         if (role === 'user') {
             messageDiv.classList.add('justify-end');
             messageDiv.innerHTML = `
-                <div class="user-message rounded-3xl rounded-br-lg px-8 py-6 max-w-md">
+                <div class="user-message rounded-2xl rounded-br-none px-6 py-4 max-w-lg shadow-md">
                     <p class="font-medium">${this.escapeHtml(content)}</p>
                 </div>
             `;
         } else {
             messageDiv.classList.add('justify-start');
             messageDiv.innerHTML = `
-                <div class="ai-message rounded-3xl rounded-bl-lg px-8 py-6 max-w-md">
+                <div class="ai-message rounded-2xl rounded-bl-none px-6 py-4 max-w-lg shadow-md">
                     <p class="text-gray-700 font-medium">${this.formatMessage(content)}</p>
                 </div>
             `;
@@ -717,18 +577,10 @@ class AIChat {
     }
 
     formatMessage(content) {
-        // Basic formatting for AI responses
         let formatted = this.escapeHtml(content);
-
-        // Convert line breaks to <br>
         formatted = formatted.replace(/\n/g, '<br>');
-
-        // Bold text **text**
         formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-        // Italic text *text*
         formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
         return formatted;
     }
 
@@ -744,12 +596,10 @@ class AIChat {
 
         if (enabled) {
             this.messageInput.classList.remove('opacity-50');
-            if (this.messageInput.value.trim().length > 0) {
-                this.sendButton.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
+            this.sendButton.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
         } else {
             this.messageInput.classList.add('opacity-50');
-            this.sendButton.classList.add('opacity-50', 'cursor-not-allowed');
+            this.sendButton.classList.add('disabled:opacity-50', 'disabled:cursor-not-allowed');
         }
     }
 
@@ -779,29 +629,25 @@ class AIChat {
         }, 100);
     }
 
-    // Method to clear conversation
     clearConversation() {
         this.conversationHistory = [];
         this.chatMessages.innerHTML = `
             <div class="message-bubble flex justify-start">
-                <div class="ai-message welcome-message rounded-3xl rounded-bl-lg px-8 py-6 max-w-md">
-                    <p class="text-gray-700 font-medium">
+                <div class="ai-message welcome-message rounded-2xl rounded-bl-lg px-8 py-6 max-w-2xl">
+                    <p class="text-gray-700 text-lg font-medium leading-relaxed">
                         Hello! I'm At41rv AI. How can I help you today?
                     </p>
                 </div>
             </div>
         `;
-        if (this.currentUser) {
+        if (this.currentUser && this.autoSave) {
             localStorage.removeItem(`chatHistory_${this.currentUser.id}`);
-            this.saveChatSession();
         }
     }
 }
 
-// Global callback function for Google Sign-In
 window.handleCredentialResponse = function(response) {
     try {
-        // Decode the JWT token to get user information
         const payload = JSON.parse(atob(response.credential.split('.')[1]));
 
         const userData = {
@@ -809,18 +655,13 @@ window.handleCredentialResponse = function(response) {
             name: payload.name,
             email: payload.email,
             picture: payload.picture,
-            given_name: payload.given_name,
-            family_name: payload.family_name
         };
 
-        // Save user data
         window.aiChat.currentUser = userData;
         localStorage.setItem('aiChatUser', JSON.stringify(userData));
 
-        // Show chat interface
         window.aiChat.showChatInterface();
         window.aiChat.hideSettings();
-
 
         console.log('User signed in successfully:', userData.name);
     } catch (error) {
@@ -829,12 +670,10 @@ window.handleCredentialResponse = function(response) {
     }
 };
 
-// Initialize the chat when the page loads
 document.addEventListener('DOMContentLoaded', () => {
     window.aiChat = new AIChat();
 });
 
-// Add keyboard shortcut for clearing conversation (Ctrl+L or Cmd+L)
 document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
         e.preventDefault();
@@ -843,5 +682,3 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
-
-// End of script
