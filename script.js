@@ -4,7 +4,7 @@ class AIChat {
         // EXPOSING YOUR API KEY IN CLIENT-SIDE CODE IS A SEVERE SECURITY RISK.
         // Anyone can view your source code and steal this key.
         // It is strongly recommended to use a backend proxy to handle API requests securely.
-        this.apiKey = 'ddc-a4f-796282249bb7466383eaabebc348d027';
+        this.apiKey = 'ddc-a4f-fa31eca3c5dc4290832dff881fa310a5';
         this.baseUrl = 'https://api.a4f.co/v1/chat/completions';
         this.model = 'provider-3/gemini-2.0-flash';
         this.conversationHistory = [];
