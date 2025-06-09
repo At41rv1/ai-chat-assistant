@@ -6,7 +6,7 @@ class AIChat {
         // It is strongly recommended to use a backend proxy to handle API requests securely.
         this.apiKey = 'ddc-a4f-796282249bb7466383eaabebc348d027';
         this.baseUrl = 'https://api.a4f.co/v1/chat/completions';
-        this.model = 'provider-3/gpt-4.5-preview';
+        this.model = 'provider-1/gemini-flash-2.0';
         this.conversationHistory = [];
         this.currentUser = null;
         this.autoSave = true;
