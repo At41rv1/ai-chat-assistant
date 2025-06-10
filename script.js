@@ -4,9 +4,9 @@ class AIChat {
         // EXPOSING YOUR API KEY IN CLIENT-SIDE CODE IS A SEVERE SECURITY RISK.
         // Anyone can view your source code and steal this key.
         // It is strongly recommended to use a backend proxy to handle API requests securely.
-        this.apiKey = 'ddc-a4f-796282249bb7466383eaabebc348d027';
-        this.baseUrl = 'https://api.a4f.co/v1/chat/completions';
-        this.model = 'provider-3/gemini-2.0-flash';
+        this.apiKey = 'AIzaSyAodZ7-LODBoj0Q5S0s01pm18sV6DWwoXc';
+        this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+        this.model = 'gemini-2.0-flash';
         this.conversationHistory = [];
         this.currentUser = null;
         this.autoSave = true;
@@ -519,30 +519,51 @@ class AIChat {
             };
         }
 
+        // Transform conversationHistory to Gemini API's 'contents' format
+        const contents = apiMessages.map(msg => ({
+            role: msg.role === 'user' ? 'user' : 'model', // Gemini API uses 'user' and 'model' for roles
+            parts: [{
+                text: msg.content
+            }]
+        }));
+
         const requestBody = {
-            model: this.model,
-            messages: apiMessages,
-            max_tokens: 1000,
-            temperature: 0.7,
-            stream: false
+            contents: contents, // Use 'contents' field
+            generationConfig: { // Parameters like max_tokens, temperature are part of generationConfig
+                maxOutputTokens: 1000, // Renamed from max_tokens
+                temperature: 0.7,
+                // topP: 0.8, // Optional: Add topP if needed
+                // topK: 40 // Optional: Add topK if needed
+            },
+            // stream: false // Streaming is typically handled by a different endpoint or parameter
         };
+
+        // The Gemini API does not directly support 'stream: false' in this endpoint.
+        // If streaming is desired, a different endpoint like :streamGenerateContent should be used.
 
         const response = await fetch(this.baseUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey}`
+                'x-goog-api-key': this.apiKey // API key for Google Gemini API
             },
             body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
+            // Handle specific error messages for Google Gemini API if needed
+            if (response.status === 400) {
+                const errorData = await response.json();
+                throw new Error(`Bad Request: ${errorData.error.message}`);
+            }
+            // ... other status codes
+
             const errorData = await response.json().catch(() => ({}));
             throw new Error((errorData.error && errorData.error.message) || `HTTP ${response.status}: ${response.statusText}`);
         }
 
         const data = await response.json();
-        const assistantMessage = data.choices[0].message.content;
+        const assistantMessage = data.candidates[0].content.parts[0].text; // Extract the text from the response
 
         if (this.conversationHistory.length > 20) {
             this.conversationHistory = this.conversationHistory.slice(-20);
