@@ -1,12 +1,8 @@
 class AIChat {
     constructor() {
-        // !!! SECURITY WARNING !!!
-        // EXPOSING YOUR API KEY IN CLIENT-SIDE CODE IS A SEVERE SECURITY RISK.
-        // Anyone can view your source code and steal this key.
-        // It is strongly recommended to use a backend proxy to handle API requests securely.
-        this.apiKey = 'AIzaSyAodZ7-LODBoj0Q5S0s01pm18sV6DWwoXc';
-        this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
-        this.model = 'gemini-2.0-flash';
+        this.apiKey = '786327579386';
+        this.baseUrl = 'https://samuraiapi.in/v1/chat/completions';
+        this.model = 'DeepInfra/google/gemma-3-4b-it'; // Default model
         this.conversationHistory = [];
         this.currentUser = null;
         this.autoSave = true;
@@ -19,13 +15,11 @@ class AIChat {
     }
 
     loadSavedSettings() {
-        // Load saved user data
         const savedUser = localStorage.getItem('aiChatUser');
         if (savedUser) {
             this.currentUser = JSON.parse(savedUser);
         }
 
-        // Load auto-save preference
         const autoSave = localStorage.getItem('autoSave');
         if (autoSave !== null) {
             this.autoSave = JSON.parse(autoSave);
@@ -34,7 +28,6 @@ class AIChat {
             }
         }
 
-        // Load conversation history for logged-in user
         if (this.currentUser && this.autoSave) {
             const savedHistory = localStorage.getItem(`chatHistory_${this.currentUser.id}`);
             if (savedHistory) {
@@ -54,25 +47,22 @@ class AIChat {
     }
 
     initializeElements() {
-        // Welcome screen elements
         this.welcomeScreen = document.getElementById('welcomeScreen');
         this.continueWithoutLogin = document.getElementById('continueWithoutLogin');
         this.signInForSync = document.getElementById('signInForSync');
 
-        // Settings elements
         this.settingsButton = document.getElementById('settingsButton');
         this.settingsModal = document.getElementById('settingsModal');
         this.closeSettingsModal = document.getElementById('closeSettingsModal');
         this.autoSaveToggle = document.getElementById('autoSaveToggle');
 
-        // User info elements
         this.chatInterface = document.getElementById('chatInterface');
         this.userInfo = document.getElementById('userInfo');
         this.userAvatar = document.getElementById('userAvatar');
         this.userName = document.getElementById('userName');
         this.userEmail = document.getElementById('userEmail');
+        this.modelSelector = document.getElementById('modelSelector');
 
-        // Chat elements
         this.chatMessages = document.getElementById('chatMessages');
         this.messageInput = document.getElementById('messageInput');
         this.sendButton = document.getElementById('sendButton');
@@ -82,15 +72,12 @@ class AIChat {
         this.chatHistorySidebar = document.getElementById('chatHistorySidebar');
         this.closeHistoryButton = document.getElementById('closeHistoryButton');
 
-
-        // Modal elements
         this.errorModal = document.getElementById('errorModal');
         this.errorMessage = document.getElementById('errorMessage');
         this.closeErrorModal = document.getElementById('closeErrorModal');
     }
 
     attachEventListeners() {
-        // Welcome screen buttons
         if (this.continueWithoutLogin) {
             this.continueWithoutLogin.addEventListener('click', () => this.startChatting());
         }
@@ -99,10 +86,14 @@ class AIChat {
             this.signInForSync.addEventListener('click', () => this.showSettings());
         }
 
-        // Attach settings related listeners
+        if (this.modelSelector) {
+            this.modelSelector.addEventListener('change', (e) => {
+                this.model = e.target.value;
+            });
+        }
+
         this.attachSettingsListeners();
 
-        // Chat history toggle
         if (this.historyButton) {
             this.historyButton.addEventListener('click', () => this.toggleSidebar());
         }
@@ -111,7 +102,6 @@ class AIChat {
             this.closeHistoryButton.addEventListener('click', () => this.toggleSidebar());
         }
 
-        // Close sidebar when clicking outside
         document.addEventListener('click', (e) => {
             if (this.chatHistorySidebar &&
                 this.chatHistorySidebar.classList.contains('active') &&
@@ -132,18 +122,11 @@ class AIChat {
             });
         }
 
-        // Authentication event listeners
-        if (this.customGoogleSignIn) {
-            this.customGoogleSignIn.addEventListener('click', () => this.initiateGoogleSignIn());
-        }
-
         const signOutButton = document.getElementById('signOutButton');
         if (signOutButton) {
             signOutButton.addEventListener('click', () => this.signOut());
         }
 
-
-        // Chat event listeners
         if (this.clearChatButton) {
             this.clearChatButton.addEventListener('click', () => {
                 if (confirm('Are you sure you want to clear the conversation?')) {
@@ -157,7 +140,6 @@ class AIChat {
         }
 
         if (this.messageInput) {
-            // Enter key press
             this.messageInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -165,7 +147,6 @@ class AIChat {
                 }
             });
 
-            // Input validation
             this.messageInput.addEventListener('input', () => {
                 const message = this.messageInput.value.trim();
                 this.sendButton.disabled = message.length === 0;
@@ -178,7 +159,6 @@ class AIChat {
             });
         }
 
-        // Error modal close
         if (this.closeErrorModal) {
             this.closeErrorModal.addEventListener('click', () => this.hideErrorModal());
         }
@@ -200,7 +180,6 @@ class AIChat {
         if (this.chatInterface) {
             this.chatInterface.classList.remove('hidden');
 
-            // Initialize chat with welcome message if no history
             if (this.chatMessages && this.conversationHistory.length === 0) {
                 this.chatMessages.innerHTML = `
                     <div class="message-bubble flex justify-start">
@@ -293,7 +272,6 @@ class AIChat {
         if (signedInState) {
             signedInState.classList.remove('hidden');
 
-            // Update user info in settings
             const avatar = document.getElementById('settingsUserAvatar');
             const name = document.getElementById('settingsUserName');
             const email = document.getElementById('settingsUserEmail');
@@ -414,8 +392,8 @@ class AIChat {
     }
 
     signOut() {
-        const previousUserId = this.currentUser.id;
-        if (this.autoSave) {
+        const previousUserId = this.currentUser ? this.currentUser.id : null;
+        if (previousUserId && this.autoSave) {
             localStorage.removeItem(`chatHistory_${previousUserId}`);
         }
 
@@ -438,21 +416,10 @@ class AIChat {
         }
     }
 
-    checkForSearchIntent(message) {
-        const searchKeywords = ['weather', 'news', 'latest', 'date', 'time', 'temperature', 'forecast', 'what is', 'who is', 'define'];
+    checkForLiveSearchIntent(message) {
+        const keywords = ['weather', 'news', 'latest', 'date', 'time', 'temperature', 'forecast', 'current events', 'stock price'];
         const lowerCaseMessage = message.toLowerCase();
-        return searchKeywords.some(keyword => lowerCaseMessage.includes(keyword));
-    }
-
-    async performWebSearch(query) {
-        console.log(`Performing web search for: ${query}`);
-        if (query.toLowerCase().includes('date')) {
-            return `Simulated Search Result: Today's date is ${new Date().toLocaleDateString()}.`;
-        }
-        if (query.toLowerCase().includes('weather')) {
-            return "Simulated Search Result: The weather is currently sunny with a temperature of 25°C.";
-        }
-        return `No specific live result found for "${query}". General web search results would be here.`;
+        return keywords.some(keyword => lowerCaseMessage.includes(keyword));
     }
 
     async sendMessage() {
@@ -466,104 +433,99 @@ class AIChat {
         });
         this.setInputState(false);
         this.messageInput.value = '';
+
+        // --- Start of new logic for custom responses ---
+        const lowerCaseMessage = message.toLowerCase();
+        const modelKeywords = [
+            'which model', 'what model', 'your model', 'model name',
+            'who are you', 'what are you', 'tell me about yourself',
+            'are you a model', 'model'
+        ];
+
+        // Check if the exact message is "model" or contains any of the keywords
+        if (modelKeywords.some(keyword => lowerCaseMessage.includes(keyword))) {
+            const responses = [
+                "At41rv AI is very best LLM Model by Atharv",
+                "see your's face then ask about me - at41rv"
+            ];
+            const response = responses[Math.floor(Math.random() * responses.length)];
+
+            this.addMessage(response, 'assistant');
+            this.conversationHistory.push({ role: 'assistant', content: response });
+            this.setInputState(true);
+            this.focusInput();
+            this.saveConversationHistory();
+            return; // Exit the function to prevent API call
+        }
+        // --- End of new logic ---
+
         this.showTypingIndicator();
 
         try {
-            let searchContext = null;
-            if (this.checkForSearchIntent(message)) {
-                searchContext = await this.performWebSearch(message);
+            // Check for live search intent
+            if (this.checkForLiveSearchIntent(message)) {
+                const searchModel = 'XenAI/gpt-4o-search-preview';
+                const searchResponse = await this.callAPI(message, searchModel);
+                this.addMessage(searchResponse, 'assistant');
+                this.conversationHistory.push({
+                    role: 'assistant',
+                    content: searchResponse
+                });
+                this.showTypingIndicator();
             }
 
-            const response = await this.callAPI(message, searchContext);
-
-            this.hideTypingIndicator();
-            this.addMessage(response, 'assistant');
+            // Call the user-selected model
+            const mainResponse = await this.callAPI(message);
+            this.addMessage(mainResponse, 'assistant');
             this.conversationHistory.push({
                 role: 'assistant',
-                content: response
+                content: mainResponse
             });
+
             this.saveConversationHistory();
 
         } catch (error) {
             console.error('Error:', error);
-            this.hideTypingIndicator();
             this.showError(error.message || 'An error occurred while processing your request.');
         } finally {
+            this.hideTypingIndicator();
             this.setInputState(true);
             this.focusInput();
         }
     }
 
-    async callAPI(message, searchContext = null) {
-        const lowerMsg = message.toLowerCase();
-        if (
-            lowerMsg.includes('model') ||
-            lowerMsg.includes('at41rv') ||
-            lowerMsg.includes('what are you') ||
-            lowerMsg.includes('tell me about') ||
-            lowerMsg.includes('what is your name') ||
-            lowerMsg.includes('who are you') ||
-            lowerMsg.includes('what model') ||
-            lowerMsg.includes('which model')
-        ) {
-            return "At41rv AI is the best model made by Atharv.\nGoogle-verified, you can ask anything.";
-        }
 
-        let apiMessages = [...this.conversationHistory];
-
-        if (searchContext) {
-            const augmentedContent = `Based on the following information: "${searchContext}", please answer this question: "${message}"`;
-            apiMessages[apiMessages.length - 1] = {
-                role: 'user',
-                content: augmentedContent
-            };
-        }
-
-        // Transform conversationHistory to Gemini API's 'contents' format
-        const contents = apiMessages.map(msg => ({
-            role: msg.role === 'user' ? 'user' : 'model', // Gemini API uses 'user' and 'model' for roles
-            parts: [{
-                text: msg.content
-            }]
-        }));
+    async callAPI(message, overrideModel = null) {
+        const modelToUse = overrideModel || this.model;
+        const searchModel = 'XenAI/gpt-4o-search-preview';
 
         const requestBody = {
-            contents: contents, // Use 'contents' field
-            generationConfig: { // Parameters like max_tokens, temperature are part of generationConfig
-                maxOutputTokens: 1000, // Renamed from max_tokens
-                temperature: 0.7,
-                // topP: 0.8, // Optional: Add topP if needed
-                // topK: 40 // Optional: Add topK if needed
-            },
-            // stream: false // Streaming is typically handled by a different endpoint or parameter
+            model: modelToUse,
+            messages: this.conversationHistory,
+            max_tokens: 1000,
+            stream: false
         };
 
-        // The Gemini API does not directly support 'stream: false' in this endpoint.
-        // If streaming is desired, a different endpoint like :streamGenerateContent should be used.
+        if (modelToUse !== searchModel) {
+            requestBody.temperature = 0.7;
+        }
 
         const response = await fetch(this.baseUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-goog-api-key': this.apiKey // API key for Google Gemini API
+                'Authorization': `Bearer ${this.apiKey}`
             },
             body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
-            // Handle specific error messages for Google Gemini API if needed
-            if (response.status === 400) {
-                const errorData = await response.json();
-                throw new Error(`Bad Request: ${errorData.error.message}`);
-            }
-            // ... other status codes
-
             const errorData = await response.json().catch(() => ({}));
             throw new Error((errorData.error && errorData.error.message) || `HTTP ${response.status}: ${response.statusText}`);
         }
 
         const data = await response.json();
-        const assistantMessage = data.candidates[0].content.parts[0].text; // Extract the text from the response
+        const assistantMessage = data.choices[0].message.content;
 
         if (this.conversationHistory.length > 20) {
             this.conversationHistory = this.conversationHistory.slice(-20);
@@ -625,12 +587,16 @@ class AIChat {
     }
 
     showTypingIndicator() {
-        this.typingIndicator.classList.remove('hidden');
-        this.scrollToBottom();
+        if (this.typingIndicator) {
+            this.typingIndicator.classList.remove('hidden');
+            this.scrollToBottom();
+        }
     }
 
     hideTypingIndicator() {
-        this.typingIndicator.classList.add('hidden');
+        if (this.typingIndicator) {
+            this.typingIndicator.classList.add('hidden');
+        }
     }
 
     showError(message) {
@@ -646,7 +612,9 @@ class AIChat {
 
     scrollToBottom() {
         setTimeout(() => {
-            this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            if (this.chatMessages) {
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            }
         }, 100);
     }
 
@@ -681,9 +649,8 @@ window.handleCredentialResponse = function(response) {
         window.aiChat.currentUser = userData;
         localStorage.setItem('aiChatUser', JSON.stringify(userData));
 
-        window.aiChat.showChatInterface();
         window.aiChat.hideSettings();
-
+        window.aiChat.showChatInterface();
         console.log('User signed in successfully:', userData.name);
     } catch (error) {
         console.error('Error handling Google Sign-In:', error);
