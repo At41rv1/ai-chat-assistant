@@ -2,7 +2,7 @@ class AIChat {
     constructor() {
         this.apiKey = '786327112579386';
         this.baseUrl = 'https://samuraiapi.in/v1/chat/completions';
-        this.model = 'DeepInfra/google/gemma-3-4b-it'; // Default model
+        this.model = 'SciraChat/Grok3'; // Default model
         this.conversationHistory = [];
         this.currentUser = null;
         this.autoSave = true;
