@@ -1,6 +1,6 @@
 class AIChat {
     constructor() {
-        this.apiKey = '786319867112579386';
+        this.apiKey = '7863199386';
         this.baseUrl = 'https://samuraiapi.in/v1/chat/completions';
         this.model = 'DeepInfra/google/gemma-3-4b-it'; // Default model
         this.conversationHistory = [];
