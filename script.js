@@ -584,6 +584,10 @@ class AIChat {
             assistantMessage = data.choices[0].message.content;
         }
 
+        // **FIX:** Remove <think> tags from the response for the deepseek model
+        if (currentModel === 'deepseek-r1-distill-llama-70b') {
+            assistantMessage = assistantMessage.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+        }
 
         if (this.conversationHistory.length > 20) {
             this.conversationHistory = this.conversationHistory.slice(-20);
