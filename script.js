@@ -24,7 +24,7 @@ class AIChat {
             this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
         } else if (modelName === 'deepseek-r1-distill-llama-70b') {
             this.apiKey = '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';
-            this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+            this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
         }
         this.model = modelName;
     }
@@ -550,7 +550,7 @@ class AIChat {
         };
 
         let requestBody = {};
-        if (currentModel === 'gemini-2.0-flash') {
+        if (currentModel === 'deepseek-r1-distill-llama-70b') {
             requestBody = {
                 contents: this.conversationHistory.map(msg => ({
                     role: msg.role === 'user' ? 'user' : 'model',
@@ -589,7 +589,7 @@ class AIChat {
         const data = await response.json();
         let assistantMessage = '';
 
-        if (currentModel === 'gemini-2.0-flash') {
+        if (currentModel === 'deepseek-r1-distill-llama-70b') {
             assistantMessage = data.candidates[0].content.parts[0].text;
         } else {
             assistantMessage = data.choices[0].message.content;
