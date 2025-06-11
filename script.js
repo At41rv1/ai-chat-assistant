@@ -23,7 +23,7 @@ class AIChat {
             this.apiKey = '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';
             this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
         } else if (modelName === 'gemini-2.0-flash') {
-            this.apiKey = 'AIzaSyBkU7C6lEDhQ_gqE-730xCWTXjKTuN-qPI';
+            this.apiKey = 'AIzaSyAodZ7-LODBoj0Q5S0s01pm18sV6DWwoXc';
             this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
         }
         this.model = modelName;
