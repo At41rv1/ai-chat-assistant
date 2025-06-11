@@ -552,20 +552,11 @@ class AIChat {
         let requestBody = {};
         if (currentModel === 'deepseek-r1-distill-llama-70b') {
             requestBody = {
-                contents: this.conversationHistory.map(msg => ({
-                    role: msg.role === 'user' ? 'user' : 'model',
-                    parts: [{
-                        text: msg.content
-                    }]
-                }))
+                model: currentModel,
+                messages: this.conversationHistory,
+                max_tokens: 1000,
+                stream: false
             };
-            // Gemini API uses 'model' as role for assistant. Adjusting it back for consistency if needed later.
-            requestBody.contents[requestBody.contents.length - 1].role = 'user'; // Last message is always user's
-            if (this.conversationHistory.length > 0 && this.conversationHistory[0].role === 'assistant') {
-                requestBody.contents[0].role = 'model';
-            }
-
-
         } else { // For Groq (llama-3.1-8b-instant) and others
             requestBody = {
                 model: currentModel,
@@ -589,9 +580,7 @@ class AIChat {
         const data = await response.json();
         let assistantMessage = '';
 
-        if (currentModel === 'deepseek-r1-distill-llama-70b') {
-            assistantMessage = data.candidates[0].content.parts[0].text;
-        } else {
+        if (data.choices && data.choices[0] && data.choices[0].message) {
             assistantMessage = data.choices[0].message.content;
         }
 
