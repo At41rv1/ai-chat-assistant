@@ -1,8 +1,8 @@
 class AIChat {
     constructor() {
-        this.apiKey = '78632757386';
-        this.baseUrl = 'https://samuraiapi.in/v1/chat/completions';
-        this.model = 'DeepInfra/google/gemma-3-4b-it'; // Default model
+        this.apiKey = ''; // This will be set based on the selected model
+        this.baseUrl = ''; // This will be set based on the selected model
+        this.model = 'llama-3.1-8b-instant'; // Default to Model 1
         this.conversationHistory = [];
         this.currentUser = null;
         this.autoSave = true;
@@ -12,6 +12,21 @@ class AIChat {
         this.attachEventListeners();
         this.loadSavedSettings();
         this.showWelcomeScreen();
+
+        // Set initial model based on default
+        this.setModelConfig(this.model);
+    }
+
+    // New method to set API key and base URL based on selected model
+    setModelConfig(modelName) {
+        if (modelName === 'llama-3.1-8b-instant') {
+            this.apiKey = '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';
+            this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
+        } else if (modelName === 'gemini-2.0-flash') {
+            this.apiKey = 'AIzaSyBkU7C6lEDhQ_gqE-730xCWTXjKTuN-qPI';
+            this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+        }
+        this.model = modelName;
     }
 
     loadSavedSettings() {
@@ -27,6 +42,16 @@ class AIChat {
                 this.autoSaveToggle.checked = this.autoSave;
             }
         }
+
+        const savedModel = localStorage.getItem('selectedModel');
+        if (savedModel) {
+            this.model = savedModel;
+            if (this.modelSelector) {
+                this.modelSelector.value = savedModel;
+            }
+            this.setModelConfig(savedModel); // Set config based on saved model
+        }
+
 
         if (this.currentUser && this.autoSave) {
             const savedHistory = localStorage.getItem(`chatHistory_${this.currentUser.id}`);
@@ -88,7 +113,8 @@ class AIChat {
 
         if (this.modelSelector) {
             this.modelSelector.addEventListener('change', (e) => {
-                this.model = e.target.value;
+                this.setModelConfig(e.target.value); // Update model and its config
+                localStorage.setItem('selectedModel', this.model); // Save selected model
             });
         }
 
@@ -462,25 +488,47 @@ class AIChat {
         this.showTypingIndicator();
 
         try {
-            // Check for live search intent
+            let finalResponse = '';
+
+            // Check for live search intent first
             if (this.checkForLiveSearchIntent(message)) {
-                const searchModel = 'XenAI/gpt-4o-search-preview';
-                const searchResponse = await this.callAPI(message, searchModel);
-                this.addMessage(searchResponse, 'assistant');
-                this.conversationHistory.push({
-                    role: 'assistant',
-                    content: searchResponse
-                });
-                this.showTypingIndicator();
+                // Temporarily override model and API key for search
+                const originalModel = this.model;
+                const originalApiKey = this.apiKey;
+                const originalBaseUrl = this.baseUrl;
+
+                this.model = 'XenAI/gpt-4o-search-preview'; // This model isn't in your provided list, keeping the original from the file
+                this.baseUrl = 'https://samuraiapi.in/v1/chat/completions'; // Keeping the original base URL from the file
+                this.apiKey = '78632757386'; // Keeping the original API key from the file
+
+                const searchResponse = await this.callAPI(message, this.model); // Pass the model explicitly
+                finalResponse = searchResponse;
+
+                // Restore original model and API key
+                this.model = originalModel;
+                this.apiKey = originalApiKey;
+                this.baseUrl = originalBaseUrl;
+
+                // Add search response to history only if it's distinct
+                if (searchResponse.trim() !== '') {
+                    this.addMessage(searchResponse, 'assistant');
+                    this.conversationHistory.push({
+                        role: 'assistant',
+                        content: searchResponse
+                    });
+                }
             }
 
-            // Call the user-selected model
-            const mainResponse = await this.callAPI(message);
-            this.addMessage(mainResponse, 'assistant');
-            this.conversationHistory.push({
-                role: 'assistant',
-                content: mainResponse
-            });
+            // Always call the currently selected model
+            const mainResponse = await this.callAPI(message, this.model); // Use the currently selected model
+            if (finalResponse === '' || finalResponse !== mainResponse) { // Avoid duplicate messages if search and main give same answer
+                this.addMessage(mainResponse, 'assistant');
+                this.conversationHistory.push({
+                    role: 'assistant',
+                    content: mainResponse
+                });
+            }
+
 
             this.saveConversationHistory();
 
@@ -495,27 +543,41 @@ class AIChat {
     }
 
 
-    async callAPI(message, overrideModel = null) {
-        const modelToUse = overrideModel || this.model;
-        const searchModel = 'XenAI/gpt-4o-search-preview';
-
-        const requestBody = {
-            model: modelToUse,
-            messages: this.conversationHistory,
-            max_tokens: 1000,
-            stream: false
+    async callAPI(message, currentModel) {
+        let headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
         };
 
-        if (modelToUse !== searchModel) {
-            requestBody.temperature = 0.7;
+        let requestBody = {};
+        if (currentModel === 'gemini-2.0-flash') {
+            requestBody = {
+                contents: this.conversationHistory.map(msg => ({
+                    role: msg.role === 'user' ? 'user' : 'model',
+                    parts: [{
+                        text: msg.content
+                    }]
+                }))
+            };
+            // Gemini API uses 'model' as role for assistant. Adjusting it back for consistency if needed later.
+            requestBody.contents[requestBody.contents.length - 1].role = 'user'; // Last message is always user's
+            if (this.conversationHistory.length > 0 && this.conversationHistory[0].role === 'assistant') {
+                requestBody.contents[0].role = 'model';
+            }
+
+
+        } else { // For Groq (llama-3.1-8b-instant) and others
+            requestBody = {
+                model: currentModel,
+                messages: this.conversationHistory,
+                max_tokens: 1000,
+                stream: false
+            };
         }
 
         const response = await fetch(this.baseUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey}`
-            },
+            headers: headers,
             body: JSON.stringify(requestBody)
         });
 
@@ -525,7 +587,14 @@ class AIChat {
         }
 
         const data = await response.json();
-        const assistantMessage = data.choices[0].message.content;
+        let assistantMessage = '';
+
+        if (currentModel === 'gemini-2.0-flash') {
+            assistantMessage = data.candidates[0].content.parts[0].text;
+        } else {
+            assistantMessage = data.choices[0].message.content;
+        }
+
 
         if (this.conversationHistory.length > 20) {
             this.conversationHistory = this.conversationHistory.slice(-20);
