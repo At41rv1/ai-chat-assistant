@@ -243,12 +243,12 @@
             border: 1px solid rgba(226, 232, 240, 0.8);
         }
         
-        .modal-bg {
+        .error-modal-bg {
             background: rgba(15, 23, 42, 0.8);
             backdrop-filter: blur(8px);
         }
         
-        .modal-content {
+        .error-modal-content {
             background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
             border: 1px solid rgba(226, 232, 240, 0.8);
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
@@ -287,19 +287,6 @@
 </head>
 
 <body class="gradient-bg text-gray-800 min-h-screen">
-
-    <div id="profileCreationModal" class="fixed inset-0 modal-bg hidden items-center justify-center z-50">
-        <div class="modal-content rounded-3xl p-8 max-w-md mx-4 text-center">
-            <h3 class="text-2xl font-bold text-gray-800 mb-4">Welcome to At41rv AI</h3>
-            <p class="text-gray-600 mb-6 leading-relaxed">To get started, please create a username for your profile.</p>
-            <input type="text" id="usernameInput" placeholder="Enter your username..." class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-6 py-4 text-lg text-gray-700 placeholder-gray-400 transition-all duration-300 focus:border-gray-400 focus:ring-0 mb-4" maxlength="30">
-            <button id="createProfileButton" class="w-full bg-gray-900 text-white py-3 rounded-2xl font-semibold hover:bg-gray-700 transition-all duration-300">
-                Start Chatting
-            </button>
-        </div>
-    </div>
-
-
     <div id="welcomeScreen" class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         <nav class="border-b border-gray-200 bg-white/80 backdrop-blur-sm">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -470,9 +457,6 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             </svg>
                         </button>
-                         <button id="adminButton" class="hidden nav-button px-4 py-2 text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200">
-                            Admin
-                        </button>
                         <button id="clearChatButton" class="nav-button px-4 py-2 text-sm font-medium">
                             Clear Chat
                         </button>
@@ -541,8 +525,8 @@
                     </div>
                 </div>
 
-                <div id="settingsModal" class="fixed inset-0 modal-bg hidden items-center justify-center z-50 transition-all duration-200 opacity-0">
-                    <div class="modal-content rounded-3xl p-8 max-w-lg mx-4 w-full">
+                <div id="settingsModal" class="fixed inset-0 error-modal-bg hidden items-center justify-center z-50 transition-all duration-200 opacity-0">
+                    <div class="error-modal-content rounded-3xl p-8 max-w-lg mx-4 w-full">
                         <div class="flex justify-between items-center mb-6">
                             <h3 class="text-2xl font-bold text-gray-800">Settings</h3>
                             <button id="closeSettingsModal" class="p-2 text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-all">
@@ -557,7 +541,7 @@
                                 <h4 class="text-lg font-semibold text-gray-800 mb-4">Account</h4>
                                 <div id="accountSection">
                                     <div id="signedOutState" class="space-y-4">
-                                        <p class="text-gray-600 text-sm">Sign in with Google to sync your profile picture and name.</p>
+                                        <p class="text-gray-600 text-sm">Sign in to sync your conversations across devices and access advanced features.</p>
 
                                         <div id="g_id_onload" data-client_id="465923208288-hb4182d5ro58k30pkshh4knu3i62bvrh.apps.googleusercontent.com" data-context="signin" data-ux_mode="popup" data-callback="handleCredentialResponse" data-auto_prompt="false">
                                         </div>
@@ -575,7 +559,7 @@
                                             </div>
                                         </div>
                                         <button id="signOutButton" class="w-full bg-red-50 text-red-600 py-3 px-4 rounded-xl font-medium hover:bg-red-100 transition-all duration-300">
-                                Sign Out of Google
+                                Sign Out
                             </button>
                                     </div>
                                 </div>
@@ -587,7 +571,7 @@
                                     <div class="flex items-center justify-between">
                                         <div>
                                             <div class="font-medium text-gray-800">Auto-save conversations</div>
-                                            <div class="text-sm text-gray-600">Automatically save chats to this browser</div>
+                                            <div class="text-sm text-gray-600">Automatically save chats to your Google account</div>
                                         </div>
                                         <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="autoSaveToggle" class="sr-only peer" checked>
@@ -610,7 +594,7 @@
                                         </div>
                                     </a>
                                     <div class="text-xs text-gray-500 p-3 bg-gray-50 rounded-xl">
-                                        <p><strong>Version:</strong> 1.2 (User Profiles)</p>
+                                        <p><strong>Version:</strong> 1.0</p>
                                         <p><strong>Last Update:</strong> Today </p>
                                         <p><strong>Privacy:</strong> Your conversations are secure and private</p>
                                     </div>
@@ -620,33 +604,8 @@
                     </div>
                 </div>
 
-                <div id="adminModal" class="fixed inset-0 modal-bg hidden items-center justify-center z-50 transition-all duration-200 opacity-0">
-                    <div class="modal-content rounded-3xl p-6 max-w-6xl w-full h-[90vh] flex flex-col">
-                        <div class="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
-                            <h3 class="text-2xl font-bold text-gray-800">Admin Panel</h3>
-                            <button id="closeAdminModal" class="p-2 text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-all">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                            </button>
-                        </div>
-                        <div class="flex-1 flex gap-6 overflow-hidden">
-                            <div class="w-1/3 flex flex-col border-r border-gray-200 pr-4">
-                                <h4 class="text-lg font-semibold text-gray-800 mb-3">Users</h4>
-                                <div id="adminUserList" class="flex-1 overflow-y-auto space-y-2">
-                                    </div>
-                            </div>
-                            <div class="w-2/3 flex flex-col">
-                                 <h4 class="text-lg font-semibold text-gray-800 mb-3">Conversation History</h4>
-                                <div id="adminChatView" class="flex-1 overflow-y-auto bg-gray-50 rounded-xl p-4 space-y-4">
-                                   <p class="text-gray-500 text-center mt-8">Select a user to see their chat history.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div id="errorModal" class="fixed inset-0 modal-bg hidden items-center justify-center z-50">
-                    <div class="modal-content rounded-3xl p-8 max-w-md mx-4">
+                <div id="errorModal" class="fixed inset-0 error-modal-bg hidden items-center justify-center z-50">
+                    <div class="error-modal-content rounded-3xl p-8 max-w-md mx-4">
                         <h3 class="text-2xl font-bold text-gray-800 mb-4">Error</h3>
                         <p id="errorMessage" class="text-gray-600 mb-6 leading-relaxed"></p>
                         <button id="closeErrorModal" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-3 rounded-2xl font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all duration-300">
