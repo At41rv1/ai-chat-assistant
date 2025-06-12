@@ -1,491 +1,886 @@
-/**
- * AIChat Class
- *
- * This script manages the entire functionality of the AI Chat application.
- * It has been updated to work with a secure backend server.
- *
- * MAJOR CHANGES:
- * 1.  REMOVED API KEYS: API keys are no longer stored on the client. The script
- * now sends chat requests to a local server endpoint (`/api/chat/completions`)
- * which is responsible for securely calling the AI model's API.
- *
- * 2.  SERVER-SIDE STORAGE: Chat history is no longer saved in localStorage.
- * It is fetched from and saved to the server, enabling cross-device sync.
- *
- * 3.  JWT AUTHENTICATION: The client stores a JWT upon login and sends it in the
- * Authorization header for all protected API calls.
- *
- * 4.  SECURE ADMIN PANEL: The admin panel now fetches user lists and their
- * chat histories from secure, admin-only server endpoints.
- */
 class AIChat {
     constructor() {
-        this.model = 'llama-3.1-8b-instant';
+        this.apiKey = ''; // This will be set based on the selected model
+        this.baseUrl = ''; // This will be set based on the selected model
+        this.model = 'llama-3.1-8b-instant'; // Default to Model 1
         this.conversationHistory = [];
         this.currentUser = null;
-        this.isAdmin = false;
-        
-        // Base URL for your own backend server
-        this.apiBaseUrl = ''; // e.g., 'http://localhost:3000' or your production URL
+        this.autoSave = true;
+        this.isSidebarOpen = false;
+        this.isAdmin = false; // Admin flag
 
         this.initializeElements();
         this.attachEventListeners();
-        this.init();
+        this.loadSavedSettings();
+        this.showWelcomeScreen();
+        this.updateAdminUI(); // Check admin status on load
+
+        // Set initial model based on default
+        this.setModelConfig(this.model);
     }
 
-    async init() {
-        this.loadToken();
-        if (this.currentUser) {
-            this.isAdmin = this.currentUser.role === 'admin';
-            this.showChatInterface();
-            await this.loadConversationFromServer();
-        } else {
-            this.showWelcomeScreen();
+    // New method to set API key and base URL based on selected model
+    setModelConfig(modelName) {
+        if (modelName === 'llama-3.1-8b-instant') {
+            this.apiKey = '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';
+            this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
+        } else if (modelName === 'deepseek-r1-distill-llama-70b') {
+            this.apiKey = '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';
+            this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
+        }
+        this.model = modelName;
+    }
+
+    loadSavedSettings() {
+        const savedUser = localStorage.getItem('aiChatUser');
+        if (savedUser) {
+            this.currentUser = JSON.parse(savedUser);
+            // Check for Admin
+            if (this.currentUser.email === 'at41rv@gmail.com') {
+                this.isAdmin = true;
+            }
+        }
+
+        const autoSave = localStorage.getItem('autoSave');
+        if (autoSave !== null) {
+            this.autoSave = JSON.parse(autoSave);
+            if (this.autoSaveToggle) {
+                this.autoSaveToggle.checked = this.autoSave;
+            }
+        }
+
+        const savedModel = localStorage.getItem('selectedModel');
+        if (savedModel) {
+            this.model = savedModel;
+            if (this.modelSelector) {
+                this.modelSelector.value = savedModel;
+            }
+            this.setModelConfig(savedModel); // Set config based on saved model
+        }
+
+
+        if (this.currentUser && this.autoSave) {
+            const savedHistory = localStorage.getItem(`chatHistory_${this.currentUser.id}`);
+            if (savedHistory) {
+                this.conversationHistory = JSON.parse(savedHistory);
+                this.loadConversationHistory();
+            }
         }
         this.updateAdminUI();
+    }
+
+    showWelcomeScreen() {
+        if (this.welcomeScreen) {
+            this.welcomeScreen.classList.remove('hidden');
+        }
+        if (this.chatInterface) {
+            this.chatInterface.classList.add('hidden');
+        }
     }
 
     initializeElements() {
-        // Main Screens
         this.welcomeScreen = document.getElementById('welcomeScreen');
-        this.chatInterface = document.getElementById('chatInterface');
-
-        // Buttons
         this.continueWithoutLogin = document.getElementById('continueWithoutLogin');
         this.signInForSync = document.getElementById('signInForSync');
-        this.sendButton = document.getElementById('sendButton');
-        this.clearChatButton = document.getElementById('clearChatButton');
-        this.settingsButton = document.getElementById('settingsButton');
-        this.adminButton = document.getElementById('adminButton');
-        this.historyButton = document.getElementById('historyButton');
-        this.closeHistoryButton = document.getElementById('closeHistoryButton');
 
-        // UI Components
-        this.messageInput = document.getElementById('messageInput');
-        this.chatMessages = document.getElementById('chatMessages');
-        this.typingIndicator = document.getElementById('typingIndicator');
-        this.modelSelector = document.getElementById('modelSelector');
-        
-        // User Info Display
+        this.settingsButton = document.getElementById('settingsButton');
+        this.settingsModal = document.getElementById('settingsModal');
+        this.closeSettingsModal = document.getElementById('closeSettingsModal');
+        this.autoSaveToggle = document.getElementById('autoSaveToggle');
+
+        this.chatInterface = document.getElementById('chatInterface');
         this.userInfo = document.getElementById('userInfo');
         this.userAvatar = document.getElementById('userAvatar');
         this.userName = document.getElementById('userName');
+        this.userEmail = document.getElementById('userEmail');
+        this.modelSelector = document.getElementById('modelSelector');
 
-        // Sidebar
+        this.chatMessages = document.getElementById('chatMessages');
+        this.messageInput = document.getElementById('messageInput');
+        this.sendButton = document.getElementById('sendButton');
+        this.typingIndicator = document.getElementById('typingIndicator');
+        this.clearChatButton = document.getElementById('clearChatButton');
+        this.historyButton = document.getElementById('historyButton');
         this.chatHistorySidebar = document.getElementById('chatHistorySidebar');
-        this.chatHistoryList = document.getElementById('chatHistoryList');
+        this.closeHistoryButton = document.getElementById('closeHistoryButton');
+
+        this.errorModal = document.getElementById('errorModal');
+        this.errorMessage = document.getElementById('errorMessage');
+        this.closeErrorModal = document.getElementById('closeErrorModal');
+        
+        // Admin Panel Elements
+        this.adminButton = document.getElementById('adminButton');
+        this.adminModal = document.getElementById('adminModal');
+        this.closeAdminModal = document.getElementById('closeAdminModal');
+        this.adminUserList = document.getElementById('adminUserList');
+        this.adminChatView = document.getElementById('adminChatView');
     }
 
     attachEventListeners() {
-        // Welcome Screen
-        this.continueWithoutLogin.addEventListener('click', () => this.startChatting(false));
-        this.signInForSync.addEventListener('click', () => this.showSettingsModal());
-        
-        // Chat Controls
-        this.sendButton.addEventListener('click', () => this.sendMessage());
-        this.messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.sendMessage();
+        if (this.continueWithoutLogin) {
+            this.continueWithoutLogin.addEventListener('click', () => this.startChatting());
+        }
+
+        if (this.signInForSync) {
+            this.signInForSync.addEventListener('click', () => this.showSettings());
+        }
+
+        if (this.modelSelector) {
+            this.modelSelector.addEventListener('change', (e) => {
+                this.setModelConfig(e.target.value); // Update model and its config
+                localStorage.setItem('selectedModel', this.model); // Save selected model
+            });
+        }
+
+        this.attachSettingsListeners();
+        this.attachAdminListeners(); // Attach listeners for the admin panel
+
+        if (this.historyButton) {
+            this.historyButton.addEventListener('click', () => this.toggleSidebar());
+        }
+
+        if (this.closeHistoryButton) {
+            this.closeHistoryButton.addEventListener('click', () => this.toggleSidebar());
+        }
+
+        document.addEventListener('click', (e) => {
+            if (this.chatHistorySidebar &&
+                this.chatHistorySidebar.classList.contains('active') &&
+                !e.target.closest('#chatHistorySidebar') &&
+                !e.target.closest('#historyButton')) {
+                this.toggleSidebar();
             }
         });
-        this.messageInput.addEventListener('input', () => {
-            this.sendButton.disabled = this.messageInput.value.trim().length === 0;
-            // Auto-resize textarea
-            this.messageInput.style.height = 'auto';
-            this.messageInput.style.height = `${this.messageInput.scrollHeight}px`;
-        });
-        
-        // Header Buttons
-        this.clearChatButton.addEventListener('click', () => this.clearConversation());
-        this.settingsButton.addEventListener('click', () => this.showSettingsModal());
-        if (this.adminButton) this.adminButton.addEventListener('click', () => this.showAdminModal());
-        if (this.historyButton) this.historyButton.addEventListener('click', () => this.toggleSidebar());
-    }
-    
-    // --- AUTHENTICATION & USER STATE ---
 
-    loadToken() {
-        const token = localStorage.getItem('authToken');
-        if (token) {
-            try {
-                // Decode token to get user info without verifying signature (server does that)
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                if (payload.exp * 1000 > Date.now()) {
-                    this.currentUser = payload;
-                } else {
-                    localStorage.removeItem('authToken'); // Token expired
+
+        if (this.autoSaveToggle) {
+            this.autoSaveToggle.addEventListener('change', (e) => {
+                this.autoSave = e.target.checked;
+                localStorage.setItem('autoSave', JSON.stringify(this.autoSave));
+                if (this.currentUser && this.autoSave) {
+                    this.saveConversationHistory();
                 }
-            } catch (e) {
-                console.error("Failed to decode token", e);
-                localStorage.removeItem('authToken');
-            }
+            });
         }
-    }
 
-    handleSignIn(token) {
-        localStorage.setItem('authToken', token);
-        this.loadToken();
-        this.isAdmin = this.currentUser.role === 'admin';
-        this.closeModal();
-        this.startChatting(true);
-    }
-    
-    signOut() {
-        this.currentUser = null;
-        this.isAdmin = false;
-        this.conversationHistory = [];
-        localStorage.removeItem('authToken');
-        if (window.google) google.accounts.id.disableAutoSelect();
-        this.showWelcomeScreen();
-        this.updateAdminUI();
-    }
-    
-    // --- UI & SCREEN MANAGEMENT ---
-    
-    showWelcomeScreen() {
-        this.welcomeScreen.classList.remove('hidden');
-        this.chatInterface.classList.add('hidden');
-    }
-
-    async startChatting(isLoggedIn) {
-        this.welcomeScreen.classList.add('hidden');
-        this.chatInterface.classList.remove('hidden');
-        this.chatInterface.classList.add('flex');
-        
-        if (isLoggedIn) {
-            this.userInfo.classList.remove('hidden');
-            this.userAvatar.src = this.currentUser.picture || 'https://via.placeholder.com/40';
-            this.userName.textContent = this.currentUser.name || this.currentUser.username;
-            await this.loadConversationFromServer();
-        } else {
-            this.userInfo.classList.add('hidden');
-            this.renderConversation(); // Render with just the welcome message
+        const signOutButton = document.getElementById('signOutButton');
+        if (signOutButton) {
+            signOutButton.addEventListener('click', () => this.signOut());
         }
-        this.updateAdminUI();
-        this.messageInput.focus();
-    }
-    
-    updateAdminUI() {
-        if (this.adminButton) {
-            this.adminButton.classList.toggle('hidden', !this.isAdmin);
+
+        if (this.clearChatButton) {
+            this.clearChatButton.addEventListener('click', () => {
+                if (confirm('Are you sure you want to clear the conversation?')) {
+                    this.clearConversation();
+                }
+            });
         }
-    }
-    
-    toggleSidebar() {
-        this.chatHistorySidebar.classList.toggle('active');
-        if (this.chatHistorySidebar.classList.contains('active')) {
-            this.renderHistoryList();
+
+        if (this.sendButton) {
+            this.sendButton.addEventListener('click', () => this.sendMessage());
         }
-    }
-    
-    // --- CHAT LOGIC ---
-    
-    async sendMessage() {
-        const messageText = this.messageInput.value.trim();
-        if (!messageText) return;
 
-        const tempMessageId = `temp_${Date.now()}`;
-        this.conversationHistory.push({ role: 'user', content: messageText });
-        this.renderConversation();
-
-        this.messageInput.value = '';
-        this.sendButton.disabled = true;
-        this.typingIndicator.classList.remove('hidden');
-        this.scrollToBottom();
-
-        try {
-            // IMPORTANT: This request goes to YOUR server, not directly to Groq.
-            // Your server will add the API key and forward the request.
-            const response = await fetch(`${this.apiBaseUrl}/api/chat/completions`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                },
-                body: JSON.stringify({
-                    model: this.model,
-                    messages: this.conversationHistory
-                })
+        if (this.messageInput) {
+            this.messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendMessage();
+                }
             });
 
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.message || 'Failed to get response from server.');
+            this.messageInput.addEventListener('input', () => {
+                const message = this.messageInput.value.trim();
+                this.sendButton.disabled = message.length === 0;
+
+                if (message.length > 0) {
+                    this.sendButton.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
+                } else {
+                    this.sendButton.classList.add('disabled:opacity-50', 'disabled:cursor-not-allowed');
+                }
+            });
+        }
+
+        if (this.closeErrorModal) {
+            this.closeErrorModal.addEventListener('click', () => this.hideErrorModal());
+        }
+
+        if (this.errorModal) {
+            this.errorModal.addEventListener('click', (e) => {
+                if (e.target === this.errorModal) {
+                    this.hideErrorModal();
+                }
+            });
+        }
+    }
+
+
+    startChatting() {
+        if (this.welcomeScreen) {
+            this.welcomeScreen.classList.add('hidden');
+        }
+        if (this.chatInterface) {
+            this.chatInterface.classList.remove('hidden');
+
+            if (this.chatMessages && this.conversationHistory.length === 0) {
+                this.chatMessages.innerHTML = `
+                    <div class="message-bubble flex justify-start">
+                        <div class="ai-message welcome-message rounded-2xl rounded-bl-lg px-8 py-6 max-w-2xl backdrop-blur-sm">
+                            <p class="text-gray-700 text-lg font-medium leading-relaxed">
+                                Hello! I'm At41rv AI. How can I help you today?
+                            </p>
+                        </div>
+                    </div>
+                `;
             }
 
-            const data = await response.json();
-            const aiMessage = data.choices[0].message.content;
-
-            this.conversationHistory.push({ role: 'assistant', content: aiMessage });
-            
-            // If logged in, save the full conversation to the server.
-            if (this.currentUser) {
-                await this.saveConversationToServer();
-            }
-
-        } catch (error) {
-            console.error('Send message error:', error);
-            this.conversationHistory.push({ role: 'assistant', content: `Error: ${error.message}` });
-        } finally {
-            this.typingIndicator.classList.add('hidden');
-            this.renderConversation();
             this.messageInput.focus();
         }
     }
 
-    async clearConversation() {
-        if (confirm('Are you sure you want to clear this conversation?')) {
-            this.conversationHistory = [];
+    showSettings() {
+        if (this.settingsModal) {
+            this.settingsModal.classList.remove('hidden');
+            this.settingsModal.style.display = 'flex';
+            requestAnimationFrame(() => {
+                this.settingsModal.classList.add('flex');
+                this.settingsModal.style.opacity = '1';
+            });
             if (this.currentUser) {
-                // If logged in, we should ideally have a dedicated endpoint
-                // to clear history on the server. For now, we just save an empty array.
-                await this.saveConversationToServer();
+                this.showSignedInState();
+            } else {
+                this.showSignedOutState();
             }
-            this.renderConversation();
-        }
-    }
-
-    // --- SERVER COMMUNICATION ---
-    
-    async loadConversationFromServer() {
-        if (!this.currentUser) return;
-        this.chatMessages.innerHTML = `<p class="text-center text-gray-500">Loading history...</p>`;
-        
-        try {
-            const response = await fetch(`${this.apiBaseUrl}/api/chats`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    this.hideSettings();
+                }
+            }, {
+                once: true
             });
-            if (!response.ok) throw new Error('Could not fetch history.');
-            const serverHistory = await response.json();
-            this.conversationHistory = serverHistory || [];
-        } catch (error) {
-            console.error('Failed to load history:', error);
-            this.showErrorModal('Could not load your chat history.');
-            this.conversationHistory = [];
-        } finally {
-            this.renderConversation();
         }
     }
 
-    async saveConversationToServer() {
-        if (!this.currentUser || this.conversationHistory.length === 0) return;
-
-        try {
-            const response = await fetch(`${this.apiBaseUrl}/api/chats`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                },
-                body: JSON.stringify({ messages: this.conversationHistory })
+    attachSettingsListeners() {
+        if (this.settingsButton) {
+            this.settingsButton.addEventListener('click', () => {
+                this.showSettings();
             });
-            if (!response.ok) throw new Error('Failed to save history.');
-        } catch (error) {
-            console.error('Failed to save history:', error);
-            // Optionally notify user that history might not be saved
+        }
+
+        if (this.closeSettingsModal) {
+            this.closeSettingsModal.addEventListener('click', () => {
+                this.hideSettings();
+            });
+        }
+
+        if (this.settingsModal) {
+            this.settingsModal.addEventListener('click', (e) => {
+                if (e.target === this.settingsModal) {
+                    this.hideSettings();
+                }
+            });
         }
     }
 
-    // --- RENDERING ---
-
-    renderConversation() {
-        this.chatMessages.innerHTML = '';
-        if (this.conversationHistory.length === 0) {
-            this.addMessageToDOM({ role: 'assistant', content: "Hello! I'm At41rv AI. How can I help you today?" });
-        } else {
-            this.conversationHistory.forEach(msg => this.addMessageToDOM(msg));
+    toggleSidebar() {
+        if (this.chatHistorySidebar) {
+            this.isSidebarOpen = !this.isSidebarOpen;
+            this.chatHistorySidebar.classList.toggle('active');
+            if (this.isSidebarOpen) {
+                this.loadChatHistory();
+            }
         }
-        this.scrollToBottom();
     }
-    
-    addMessageToDOM(message) {
-        const messageWrapper = document.createElement('div');
-        const isUser = message.role === 'user';
-        
-        messageWrapper.className = `flex w-full ${isUser ? 'justify-end' : 'justify-start'}`;
-        
-        const messageBubble = document.createElement('div');
-        messageBubble.className = `max-w-lg md:max-w-xl lg:max-w-2xl rounded-2xl px-4 py-3 shadow ${isUser ? 'bg-indigo-600 text-white' : 'bg-white text-gray-800'}`;
-        messageBubble.innerHTML = this.formatMessage(message.content);
-        
-        messageWrapper.appendChild(messageBubble);
-        this.chatMessages.appendChild(messageWrapper);
+
+
+
+    hideSettings() {
+        if (this.settingsModal) {
+            this.settingsModal.style.opacity = '0';
+            setTimeout(() => {
+                this.settingsModal.classList.add('hidden');
+                this.settingsModal.classList.remove('flex');
+                this.settingsModal.style.display = 'none';
+            }, 200);
+        }
     }
-    
-    renderHistoryList() {
-        // This method can be enhanced to show conversation summaries
-        this.chatHistoryList.innerHTML = '';
-        const userMessages = this.conversationHistory.filter(m => m.role === 'user');
-        if (userMessages.length === 0) {
-            this.chatHistoryList.innerHTML = `<p class="p-4 text-sm text-gray-500">No history found.</p>`;
+
+    showSignedInState() {
+        const signedOutState = document.getElementById('signedOutState');
+        const signedInState = document.getElementById('signedInState');
+
+        if (signedOutState) signedOutState.classList.add('hidden');
+        if (signedInState) {
+            signedInState.classList.remove('hidden');
+
+            const avatar = document.getElementById('settingsUserAvatar');
+            const name = document.getElementById('settingsUserName');
+            const email = document.getElementById('settingsUserEmail');
+
+            if (avatar) avatar.src = this.currentUser.picture || '';
+            if (name) name.textContent = this.currentUser.name || '';
+            if (email) email.textContent = this.currentUser.email || '';
+        }
+    }
+
+    loadChatHistory() {
+        const chatHistoryList = document.getElementById('chatHistoryList');
+        if (!chatHistoryList) return;
+
+        chatHistoryList.innerHTML = '';
+
+        const sessions = this.conversationHistory.reduce((acc, msg, index) => {
+            if (msg.role === 'user') {
+                acc.push({
+                    id: index,
+                    message: msg.content,
+                    timestamp: new Date().toISOString()
+                });
+            }
+            return acc;
+        }, []);
+
+        if (sessions.length === 0) {
+            chatHistoryList.innerHTML = `
+                <div class="text-center py-8 text-gray-500">
+                    <p>No chat history yet</p>
+                </div>
+            `;
             return;
         }
-        
-        userMessages.forEach((msg, index) => {
-            const item = document.createElement('div');
-            item.className = 'p-3 rounded-lg hover:bg-gray-100 cursor-pointer text-sm text-gray-700 truncate';
-            item.textContent = `Chat ${index + 1}: ${msg.content}`;
-            this.chatHistoryList.appendChild(item);
+
+        sessions.forEach((session) => {
+            const messagePreview = session.message.length > 50 ?
+                session.message.substring(0, 50) + '...' :
+                session.message;
+
+            const sessionElement = document.createElement('div');
+            sessionElement.className = 'p-4 bg-white rounded-xl shadow-sm border border-gray-100 hover:border-gray-200 transition-all cursor-pointer';
+
+            const date = new Date(session.timestamp);
+            const formattedDate = date.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            sessionElement.innerHTML = `
+                <div class="flex items-center justify-between mb-2">
+                    <div class="text-sm font-medium text-gray-900">Chat ${session.id + 1}</div>
+                    <div class="text-xs text-gray-500">${formattedDate}</div>
+                </div>
+                <p class="text-sm text-gray-600">${messagePreview}</p>
+            `;
+
+            sessionElement.addEventListener('click', () => {
+                const messageElement = this.chatMessages.children[session.id + 1]; // +1 to account for initial AI message
+                if (messageElement) {
+                    messageElement.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                }
+                this.toggleSidebar();
+            });
+
+            chatHistoryList.appendChild(sessionElement);
         });
     }
 
+    showSignedOutState() {
+        const signedOutState = document.getElementById('signedOutState');
+        const signedInState = document.getElementById('signedInState');
+
+        if (signedOutState) signedOutState.classList.remove('hidden');
+        if (signedInState) signedInState.classList.add('hidden');
+    }
+
+    saveConversationHistory() {
+        if (this.currentUser && this.autoSave) {
+            localStorage.setItem(
+                `chatHistory_${this.currentUser.id}`,
+                JSON.stringify(this.conversationHistory)
+            );
+        }
+    }
+
+    loadConversationHistory() {
+        this.chatMessages.innerHTML = '';
+        this.addMessage("Hello! I'm At41rv AI. How can I help you today?", 'assistant');
+        this.conversationHistory.forEach(msg => {
+            this.addMessage(msg.content, msg.role);
+        });
+        this.scrollToBottom();
+    }
+
+    showChatInterface() {
+        if (this.welcomeScreen) {
+            this.welcomeScreen.classList.add('hidden');
+        }
+        if (this.chatInterface) {
+            this.chatInterface.classList.remove('hidden');
+        }
+
+        if (this.currentUser) {
+            if (this.userAvatar) this.userAvatar.src = this.currentUser.picture || '';
+            if (this.userName) this.userName.textContent = this.currentUser.name || '';
+            if (this.userEmail) this.userEmail.textContent = this.currentUser.email || '';
+            if (this.userInfo) this.userInfo.classList.remove('hidden');
+            this.loadSavedSettings();
+        }
+
+        this.updateAdminUI();
+        this.focusInput();
+    }
+
+    signOut() {
+        const previousUserId = this.currentUser ? this.currentUser.id : null;
+        if (previousUserId && this.autoSave) {
+            // We don't remove chat history on sign-out anymore, so admin can see it.
+            // localStorage.removeItem(`chatHistory_${previousUserId}`);
+        }
+
+        this.currentUser = null;
+        localStorage.removeItem('aiChatUser');
+        this.isAdmin = false;
+        this.updateAdminUI();
+
+        if (this.userInfo) this.userInfo.classList.add('hidden');
+
+        this.showSignedOutState();
+        this.clearConversation();
+
+        if (window.google && window.google.accounts) {
+            window.google.accounts.id.disableAutoSelect();
+        }
+    }
+
+    focusInput() {
+        if (this.messageInput) {
+            this.messageInput.focus();
+        }
+    }
+
+    checkForLiveSearchIntent(message) {
+        const keywords = ['weather', 'news', 'latest', 'date', 'time', 'temperature', 'forecast', 'current events', 'stock price'];
+        const lowerCaseMessage = message.toLowerCase();
+        return keywords.some(keyword => lowerCaseMessage.includes(keyword));
+    }
+
+    async sendMessage() {
+        const message = this.messageInput.value.trim();
+        if (!message) return;
+
+        this.addMessage(message, 'user');
+        this.conversationHistory.push({
+            role: 'user',
+            content: message
+        });
+        this.setInputState(false);
+        this.messageInput.value = '';
+
+        // --- Start of new logic for custom responses ---
+        const lowerCaseMessage = message.toLowerCase();
+        const modelKeywords = [
+            'which model', 'what model', 'your model', 'model name',
+            'who are you', 'what are you', 'tell me about yourself',
+            'are you a model', 'model'
+        ];
+
+        // Check if the exact message is "model" or contains any of the keywords
+        if (modelKeywords.some(keyword => lowerCaseMessage.includes(keyword))) {
+            const responses = [
+                "At41rv AI is very best LLM Model by Atharv",
+                "see your's face then ask about me - at41rv"
+            ];
+            const response = responses[Math.floor(Math.random() * responses.length)];
+
+            this.addMessage(response, 'assistant');
+            this.conversationHistory.push({ role: 'assistant', content: response });
+            this.setInputState(true);
+            this.focusInput();
+            this.saveConversationHistory();
+            return; // Exit the function to prevent API call
+        }
+        // --- End of new logic ---
+
+        this.showTypingIndicator();
+
+        try {
+            let finalResponse = '';
+
+            // Check for live search intent first
+            if (this.checkForLiveSearchIntent(message)) {
+                // Temporarily override model and API key for search
+                const originalModel = this.model;
+                const originalApiKey = this.apiKey;
+                const originalBaseUrl = this.baseUrl;
+
+                this.model = 'XenAI/gpt-4o-search-preview'; // This model isn't in your provided list, keeping the original from the file
+                this.baseUrl = 'https://samuraiapi.in/v1/chat/completions'; // Keeping the original base URL from the file
+                this.apiKey = '78632757386'; // Keeping the original API key from the file
+
+                const searchResponse = await this.callAPI(message, this.model); // Pass the model explicitly
+                finalResponse = searchResponse;
+
+                // Restore original model and API key
+                this.model = originalModel;
+                this.apiKey = originalApiKey;
+                this.baseUrl = originalBaseUrl;
+
+                // Add search response to history only if it's distinct
+                if (searchResponse.trim() !== '') {
+                    this.addMessage(searchResponse, 'assistant');
+                    this.conversationHistory.push({
+                        role: 'assistant',
+                        content: searchResponse
+                    });
+                }
+            }
+
+            // Always call the currently selected model
+            const mainResponse = await this.callAPI(message, this.model); // Use the currently selected model
+            if (finalResponse === '' || finalResponse !== mainResponse) { // Avoid duplicate messages if search and main give same answer
+                this.addMessage(mainResponse, 'assistant');
+                this.conversationHistory.push({
+                    role: 'assistant',
+                    content: mainResponse
+                });
+            }
+
+
+            this.saveConversationHistory();
+
+        } catch (error) {
+            console.error('Error:', error);
+            this.showError(error.message || 'An error occurred while processing your request.');
+        } finally {
+            this.hideTypingIndicator();
+            this.setInputState(true);
+            this.focusInput();
+        }
+    }
+
+
+    async callAPI(message, currentModel) {
+        let headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
+        };
+
+        let requestBody = {};
+        if (currentModel === 'deepseek-r1-distill-llama-70b') {
+            requestBody = {
+                model: currentModel,
+                messages: this.conversationHistory,
+                max_tokens: 1000,
+                stream: false
+            };
+        } else { // For Groq (llama-3.1-8b-instant) and others
+            requestBody = {
+                model: currentModel,
+                messages: this.conversationHistory,
+                max_tokens: 1000,
+                stream: false
+            };
+        }
+
+        const response = await fetch(this.baseUrl, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error((errorData.error && errorData.error.message) || `HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        let assistantMessage = '';
+
+        if (data.choices && data.choices[0] && data.choices[0].message) {
+            assistantMessage = data.choices[0].message.content;
+        }
+
+        // **FIX:** Remove <think> tags from the response for the deepseek model
+        if (currentModel === 'deepseek-r1-distill-llama-70b') {
+            assistantMessage = assistantMessage.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+        }
+
+        if (this.conversationHistory.length > 20) {
+            this.conversationHistory = this.conversationHistory.slice(-20);
+        }
+
+        return assistantMessage;
+    }
+
+
+    addMessage(content, role) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message-bubble flex';
+
+        if (role === 'user') {
+            messageDiv.classList.add('justify-end');
+            messageDiv.innerHTML = `
+                <div class="user-message rounded-2xl rounded-br-none px-6 py-4 max-w-lg shadow-md">
+                    <p class="font-medium">${this.escapeHtml(content)}</p>
+                </div>
+            `;
+        } else {
+            messageDiv.classList.add('justify-start');
+            messageDiv.innerHTML = `
+                <div class="ai-message rounded-2xl rounded-bl-none px-6 py-4 max-w-lg shadow-md">
+                    <p class="text-gray-700 font-medium">${this.formatMessage(content)}</p>
+                </div>
+            `;
+        }
+
+        this.chatMessages.appendChild(messageDiv);
+        this.scrollToBottom();
+    }
+
     formatMessage(content) {
-        // Basic formatting for markdown-like syntax
-        let html = content.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
-        html = html.replace(/\n/g, '<br>'); // Newlines
-        return html;
+        let formatted = this.escapeHtml(content);
+        formatted = formatted.replace(/\n/g, '<br>');
+        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        return formatted;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    setInputState(enabled) {
+        this.messageInput.disabled = !enabled;
+        this.sendButton.disabled = !enabled || this.messageInput.value.trim().length === 0;
+
+        if (enabled) {
+            this.messageInput.classList.remove('opacity-50');
+            this.sendButton.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
+        } else {
+            this.messageInput.classList.add('opacity-50');
+            this.sendButton.classList.add('disabled:opacity-50', 'disabled:cursor-not-allowed');
+        }
+    }
+
+    showTypingIndicator() {
+        if (this.typingIndicator) {
+            this.typingIndicator.classList.remove('hidden');
+            this.scrollToBottom();
+        }
+    }
+
+    hideTypingIndicator() {
+        if (this.typingIndicator) {
+            this.typingIndicator.classList.add('hidden');
+        }
+    }
+
+    showError(message) {
+        this.errorMessage.textContent = message;
+        this.errorModal.classList.remove('hidden');
+        this.errorModal.classList.add('flex');
+    }
+
+    hideErrorModal() {
+        this.errorModal.classList.add('hidden');
+        this.errorModal.classList.remove('flex');
     }
 
     scrollToBottom() {
         setTimeout(() => {
-            this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
-        }, 0);
+            if (this.chatMessages) {
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            }
+        }, 100);
     }
-    
-    // --- MODALS (Settings, Admin, Error) ---
-    
-    createModal(id, title, content) {
-        this.closeModal(); // Close any existing modal
-        const modalOverlay = document.createElement('div');
-        modalOverlay.id = id;
-        modalOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
-        
-        modalOverlay.innerHTML = `
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
-                <div class="flex justify-between items-center p-4 border-b">
-                    <h3 class="text-xl font-bold">${title}</h3>
-                    <button id="closeModalBtn" class="p-2 text-gray-500 hover:text-gray-800">&times;</button>
-                </div>
-                <div class="p-6 overflow-y-auto">
-                    ${content}
+
+    clearConversation() {
+        this.conversationHistory = [];
+        this.chatMessages.innerHTML = `
+            <div class="message-bubble flex justify-start">
+                <div class="ai-message welcome-message rounded-2xl rounded-bl-lg px-8 py-6 max-w-2xl">
+                    <p class="text-gray-700 text-lg font-medium leading-relaxed">
+                        Hello! I'm At41rv AI. How can I help you today?
+                    </p>
                 </div>
             </div>
         `;
+        if (this.currentUser && this.autoSave) {
+            localStorage.removeItem(`chatHistory_${this.currentUser.id}`);
+        }
+    }
+    
+    // --- ADMIN PANEL LOGIC ---
 
-        document.body.appendChild(modalOverlay);
-        document.getElementById('closeModalBtn').addEventListener('click', () => this.closeModal());
-        modalOverlay.addEventListener('click', (e) => {
-            if (e.target === modalOverlay) this.closeModal();
+    updateAdminUI() {
+        if (this.adminButton) {
+            if (this.isAdmin) {
+                this.adminButton.classList.remove('hidden');
+            } else {
+                this.adminButton.classList.add('hidden');
+            }
+        }
+    }
+
+    attachAdminListeners() {
+        if (this.adminButton) {
+            this.adminButton.addEventListener('click', () => this.showAdminPanel());
+        }
+        if (this.closeAdminModal) {
+            this.closeAdminModal.addEventListener('click', () => this.hideAdminPanel());
+        }
+        if (this.adminModal) {
+            this.adminModal.addEventListener('click', (e) => {
+                if (e.target === this.adminModal) {
+                    this.hideAdminPanel();
+                }
+            });
+        }
+    }
+
+    showAdminPanel() {
+        if (!this.isAdmin) return;
+        this.populateAdminUserList();
+        if (this.adminModal) {
+            this.adminModal.classList.remove('hidden');
+            this.adminModal.style.display = 'flex';
+             requestAnimationFrame(() => {
+                this.adminModal.style.opacity = '1';
+            });
+        }
+    }
+
+    hideAdminPanel() {
+        if (this.adminModal) {
+            this.adminModal.style.opacity = '0';
+            setTimeout(() => {
+                this.adminModal.classList.add('hidden');
+                this.adminModal.style.display = 'none';
+            }, 200);
+        }
+    }
+    
+    populateAdminUserList() {
+        if (!this.adminUserList) return;
+        const users = JSON.parse(localStorage.getItem('allAppUsers')) || [];
+        this.adminUserList.innerHTML = '';
+        
+        if(users.length === 0){
+            this.adminUserList.innerHTML = `<p class="text-gray-500 text-sm">No user data found in this browser.</p>`;
+            return;
+        }
+
+        users.forEach(user => {
+            const userElement = document.createElement('div');
+            userElement.className = 'flex items-center space-x-3 p-2 rounded-lg cursor-pointer hover:bg-gray-100';
+            userElement.dataset.userId = user.id;
+            
+            userElement.innerHTML = `
+                <img src="${user.picture}" alt="Avatar" class="w-10 h-10 rounded-full">
+                <div>
+                    <div class="font-semibold text-sm text-gray-800">${this.escapeHtml(user.name)}</div>
+                    <div class="text-xs text-gray-500">${this.escapeHtml(user.email)}</div>
+                </div>
+            `;
+            
+            userElement.addEventListener('click', () => {
+                 // Highlight selected user
+                this.adminUserList.querySelectorAll('.bg-gray-200').forEach(el => el.classList.remove('bg-gray-200'));
+                userElement.classList.add('bg-gray-200');
+                this.displayUserHistory(user.id);
+            });
+            this.adminUserList.appendChild(userElement);
         });
     }
-
-    closeModal() {
-        const modal = document.querySelector('.fixed.inset-0.z-50');
-        if (modal) modal.remove();
-    }
-
-    showSettingsModal() {
-        const content = this.currentUser ? `
-            <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl mb-4">
-                <img src="${this.currentUser.picture || 'https://via.placeholder.com/50'}" alt="Avatar" class="w-12 h-12 rounded-full">
-                <div>
-                    <div class="font-semibold">${this.currentUser.name || this.currentUser.username}</div>
-                    <div class="text-sm text-gray-600">${this.currentUser.email || ''}</div>
-                </div>
-            </div>
-            <button id="signOutBtn" class="w-full bg-red-500 text-white py-2 px-4 rounded-lg hover:bg-red-600">Sign Out</button>
-        ` : `
-            <p class="text-gray-600 mb-4">Sign in to sync conversations across devices.</p>
-            <div id="g_id_onload" data-client_id="465923208288-hb4182d5ro58k30pkshh4knu3i62bvrh.apps.googleusercontent.com" data-context="signin" data-ux_mode="popup" data-callback="handleCredentialResponse" data-auto_prompt="false"></div>
-            <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="left"></div>
-        `;
-        
-        this.createModal('settingsModal', 'Settings', content);
-        
-        if (this.currentUser) {
-            document.getElementById('signOutBtn').addEventListener('click', () => this.signOut());
-        } else {
-            // Renders the Google sign-in button
-            google.accounts.id.renderButton(document.querySelector('.g_id_signin'), { theme: "outline", size: "large" });
-        }
-    }
     
-    async showAdminModal() {
-        if (!this.isAdmin) return;
+    displayUserHistory(userId) {
+        if (!this.adminChatView) return;
+        const history = JSON.parse(localStorage.getItem(`chatHistory_${userId}`)) || [];
+        this.adminChatView.innerHTML = '';
         
-        const content = `<div id="adminUserList" class="space-y-2">Loading users...</div><hr class="my-4"><h4 class="font-bold mb-2">Chat History</h4><div id="adminChatView" class="h-64 overflow-y-auto bg-gray-100 p-2 rounded-lg border">Select a user to view their history.</div>`;
-        this.createModal('adminModal', 'Admin Panel', content);
-
-        try {
-            const response = await fetch(`${this.apiBaseUrl}/api/admin/dashboard`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
-            });
-            if (!response.ok) throw new Error('Failed to load admin data.');
-            const data = await response.json();
-            
-            const userListEl = document.getElementById('adminUserList');
-            userListEl.innerHTML = '';
-            data.users.forEach(user => {
-                const userEl = document.createElement('div');
-                userEl.className = 'p-2 rounded-lg hover:bg-gray-100 cursor-pointer';
-                userEl.textContent = user.name || user.username || user.email;
-                userEl.addEventListener('click', () => this.displayAdminUserHistory(user.id));
-                userListEl.appendChild(userEl);
-            });
-
-        } catch (error) {
-            document.getElementById('adminUserList').textContent = `Error: ${error.message}`;
+        if (history.length === 0) {
+            this.adminChatView.innerHTML = `<p class="text-gray-500 text-center mt-8">This user has no saved chat history.</p>`;
+            return;
         }
-    }
-    
-    async displayAdminUserHistory(userId) {
-        const chatView = document.getElementById('adminChatView');
-        chatView.innerHTML = 'Loading history...';
-        try {
-            const response = await fetch(`${this.apiBaseUrl}/api/admin/chats/${userId}`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
-            });
-            if (!response.ok) throw new Error('Could not fetch user history.');
-            const history = await response.json();
-            chatView.innerHTML = '';
-            if (history.length === 0) {
-                chatView.innerHTML = 'No history for this user.';
-                return;
+        
+        history.forEach(msg => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message-bubble flex';
+
+            if (msg.role === 'user') {
+                messageDiv.classList.add('justify-end');
+                messageDiv.innerHTML = `
+                    <div class="bg-gray-800 text-white rounded-2xl rounded-br-none px-4 py-2 max-w-lg shadow-md">
+                        <p class="text-sm font-medium">${this.escapeHtml(msg.content)}</p>
+                    </div>
+                `;
+            } else { // assistant
+                messageDiv.classList.add('justify-start');
+                messageDiv.innerHTML = `
+                    <div class="bg-white border rounded-2xl rounded-bl-none px-4 py-2 max-w-lg shadow-md">
+                        <p class="text-sm text-gray-700 font-medium">${this.formatMessage(msg.content)}</p>
+                    </div>
+                `;
             }
-            history.forEach(msg => {
-                const msgEl = document.createElement('p');
-                msgEl.className = `text-sm mb-1 ${msg.role === 'user' ? 'text-blue-700' : 'text-green-700'}`;
-                msgEl.textContent = `[${msg.role}]: ${msg.content}`;
-                chatView.appendChild(msgEl);
-            });
-        } catch(error) {
-            chatView.textContent = `Error: ${error.message}`;
-        }
+            this.adminChatView.appendChild(messageDiv);
+        });
+        this.adminChatView.scrollTop = this.adminChatView.scrollHeight;
     }
 
-    showErrorModal(message) {
-        this.createModal('errorModal', 'Error', `<p>${message}</p>`);
+    trackUser(userData) {
+        if (!userData || !userData.id) return;
+        let users = JSON.parse(localStorage.getItem('allAppUsers')) || [];
+        let userMap = new Map(users.map(u => [u.id, u]));
+        userMap.set(userData.id, userData); // Adds or updates the user data
+        localStorage.setItem('allAppUsers', JSON.stringify(Array.from(userMap.values())));
     }
 }
 
-// --- Global Google Sign-In Callback ---
-function handleCredentialResponse(response) {
-    // This function is called by the Google Sign-In library.
-    // It will make a POST request to our own server's /api/auth/google endpoint.
-    fetch('/api/auth/google', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token: response.credential }),
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.token) {
-            window.aiChat.handleSignIn(data.token);
-        } else {
-            throw new Error(data.message || 'Google sign-in failed.');
-        }
-    })
-    .catch(error => {
-        console.error('Google Sign-In Error:', error);
-        window.aiChat.showErrorModal(error.message);
-    });
-}
+window.handleCredentialResponse = function(response) {
+    try {
+        const payload = JSON.parse(atob(response.credential.split('.')[1]));
 
-// --- Initialize App ---
+        const userData = {
+            id: payload.sub,
+            name: payload.name,
+            email: payload.email,
+            picture: payload.picture,
+        };
+
+        window.aiChat.currentUser = userData;
+        localStorage.setItem('aiChatUser', JSON.stringify(userData));
+        
+        // Track user for admin panel
+        window.aiChat.trackUser(userData);
+        
+        // Set admin flag if email matches
+        if(userData.email === 'at41rv@gmail.com') {
+            window.aiChat.isAdmin = true;
+        }
+
+        window.aiChat.hideSettings();
+        window.aiChat.showChatInterface();
+        console.log('User signed in successfully:', userData.name);
+    } catch (error) {
+        console.error('Error handling Google Sign-In:', error);
+        window.aiChat.showError('Failed to sign in with Google. Please try again.');
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     window.aiChat = new AIChat();
+});
+
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+        e.preventDefault();
+        if (window.aiChat && confirm('Clear conversation history?')) {
+            window.aiChat.clearConversation();
+        }
+    }
 });
