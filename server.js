@@ -10,7 +10,7 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 // IMPORTANT: Change this secret key to a long, random string for security!
-const JWT_SECRET = 'your_super_secret_key_that_is_long_and_random';
+const JWT_SECRET = '56787654323456784256728828263536627262627382626352551';
 const GOOGLE_CLIENT_ID = '465923208288-hb4182d5ro58k30pkshh4knu3i62bvrh.apps.googleusercontent.com';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
