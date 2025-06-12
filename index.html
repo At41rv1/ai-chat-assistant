@@ -10,417 +10,32 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <meta name="google-signin-client_id" content="465923208288-hb4182d5ro58k30pkshh4knu3i62bvrh.apps.googleusercontent.com">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        
-        .chat-container {
-            height: calc(100vh - 200px);
-        }
-        
-        .message-bubble {
-            animation: fadeIn 0.5s ease-out;
-        }
-        
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px) scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-        
-        .typing-indicator {
-            animation: pulse 1.5s infinite;
-        }
-        
-        @keyframes pulse {
-            0%,
-            100% {
-                opacity: 0.4;
-            }
-            50% {
-                opacity: 1;
-            }
-        }
-        
-        .gradient-bg {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            min-height: 100vh;
-        }
-        
-        .glass-effect {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transition: all 0.2s ease;
-        }
-        
-        .nav-header {
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .nav-button {
-            padding: 0.625rem;
-            color: #4b5563;
-            border-radius: 0.75rem;
-            transition: all 0.2s ease;
-        }
-        
-        .nav-button:hover {
-            color: #111827;
-            background: rgba(243, 244, 246, 0.8);
-        }
-        
-        .nav-button:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(156, 163, 175, 0.5);
-        }
-        
-        #chatHistorySidebar {
-            position: fixed;
-            left: 0;
-            top: 0;
-            height: 100vh;
-            background: rgba(255, 255, 255, 0.95);
-            border-right: 1px solid rgba(0, 0, 0, 0.1);
-            box-shadow: 4px 0 15px -3px rgba(0, 0, 0, 0.1);
-            z-index: 40;
-            transform: translateX(-100%);
-            transition: transform 0.3s ease-in-out;
-        }
-        
-        #chatHistorySidebar.active {
-            transform: translateX(0);
-        }
-        
-        .message-input {
-            background: white;
-            border: 2px solid #e5e7eb;
-            color: #374151;
-            transition: all 0.3s ease;
-        }
-        
-        .message-input:hover {
-            border-color: #d1d5db;
-        }
-        
-        .message-input:focus {
-            border-color: #6366f1;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-            outline: none;
-        }
-        
-        .message-input::placeholder {
-            color: #9ca3af;
-        }
-        
-        .send-button {
-            background: #4b5563;
-            transition: all 0.3s ease;
-        }
-        
-        .send-button:hover {
-            background: #374151;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        
-        .send-button:active {
-            transform: translateY(0);
-        }
-        
-        .send-button:disabled {
-            background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%);
-            transform: none;
-            box-shadow: none;
-        }
-        
-        .chat-messages::-webkit-scrollbar {
-            width: 8px;
-        }
-        
-        .chat-messages::-webkit-scrollbar-track {
-            background: rgba(241, 245, 249, 0.5);
-            border-radius: 4px;
-        }
-        
-        .chat-messages::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
-            border-radius: 4px;
-        }
-        
-        .chat-messages::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
-        }
-        
-        .user-message {
-            background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
-            color: white;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-        }
-        
-        .ai-message {
-            background: white;
-            color: #1f2937;
-            border: 1px solid rgba(0, 0, 0, 0.1);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        
-        .header-container {
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            backdrop-filter: blur(12px);
-            background: rgba(255, 255, 255, 0.8);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-            margin-bottom: 1.5rem;
-        }
-        
-        .header-content {
-            max-width: 7xl;
-            margin: 0 auto;
-            padding: 1rem 1.5rem;
-        }
-        
-        .header-button {
-            padding: 0.625rem;
-            color: #4b5563;
-            border-radius: 0.75rem;
-            transition: all 0.2s ease;
-        }
-        
-        .header-button:hover {
-            color: #111827;
-            background-color: rgba(243, 244, 246, 0.8);
-        }
-        
-        .header-button:focus {
-            outline: none;
-            ring: 2px;
-            ring-color: rgba(156, 163, 175, 0.5);
-        }
-        
-        @keyframes glow {
-            from {
-                text-shadow: 0 0 10px rgba(99, 102, 241, 0.3), 0 0 20px rgba(99, 102, 241, 0.3), 0 0 30px rgba(99, 102, 241, 0.3);
-            }
-            to {
-                text-shadow: 0 0 20px rgba(99, 102, 241, 0.5), 0 0 30px rgba(99, 102, 241, 0.5), 0 0 40px rgba(99, 102, 241, 0.5);
-            }
-        }
-        
-        .floating-animation {
-            animation: float 6s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-            0%,
-            100% {
-                transform: translateY(0px);
-            }
-            50% {
-                transform: translateY(-10px);
-            }
-        }
-        
-        .input-container {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-        }
-        
-        .error-modal-bg {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(8px);
-        }
-        
-        .error-modal-content {
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        }
-        
-        .shimmer {
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-            animation: shimmer 2s infinite;
-        }
-        
-        @keyframes shimmer {
-            0% {
-                transform: translateX(-100%);
-            }
-            100% {
-                transform: translateX(100%);
-            }
-        }
-        
-        .welcome-message {
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .welcome-message::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
-            animation: shimmer 3s infinite;
-        }
+        body { font-family: 'Inter', sans-serif; }
+        .chat-container { height: calc(100vh - 200px); }
+        .message-bubble { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .typing-indicator { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+        .gradient-bg { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); min-height: 100vh; }
+        .glass-effect { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(0, 0, 0, 0.05); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: all 0.2s ease; }
+        .nav-header { position: sticky; top: 0; z-index: 50; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0, 0, 0, 0.1); padding: 1rem; margin-bottom: 1.5rem; }
+        .nav-button { padding: 0.625rem; color: #4b5563; border-radius: 0.75rem; transition: all 0.2s ease; }
+        .nav-button:hover { color: #111827; background: rgba(243, 244, 246, 0.8); }
+        .message-input { background: white; border: 2px solid #e5e7eb; color: #374151; transition: all 0.3s ease; }
+        .message-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); outline: none; }
+        .send-button { background: #4b5563; transition: all 0.3s ease; }
+        .send-button:hover { background: #374151; transform: translateY(-1px); }
+        .user-message { background: linear-gradient(135deg, #374151 0%, #4b5563 100%); color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .ai-message { background: white; color: #1f2937; border: 1px solid rgba(0, 0, 0, 0.1); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .error-modal-bg { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(8px); }
+        .error-modal-content { background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid rgba(226, 232, 240, 0.8); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
     </style>
 </head>
 
 <body class="gradient-bg text-gray-800 min-h-screen">
-    <div id="welcomeScreen" class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <nav class="border-b border-gray-200 bg-white/80 backdrop-blur-sm">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center py-4">
-                    <div class="flex items-center">
-                        <h1 class="text-2xl font-bold text-gray-900">At41rv</h1>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <a href="#about" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg text-sm font-medium">About</a>
-                        <a href="mailto:at41rv@gmail.com" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg text-sm font-medium">Contact</a>
-                    </div>
-                </div>
-            </div>
-        </nav>
-
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-            <div class="flex flex-col lg:flex-row items-center justify-between gap-12">
-                <div class="flex-1 text-center lg:text-left">
-                    <h2 class="text-5xl font-bold text-gray-900 mb-6">
-                        Your Intelligent AI Assistant
-                    </h2>
-                    <p class="text-xl text-gray-600 mb-8 max-w-2xl">
-                        Experience seamless conversations with At41rv, your AI companion designed to help, assist, and engage in meaningful dialogue.
-                    </p>
-                    <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                        <button id="continueWithoutLogin" class="inline-flex items-center px-8 py-4 border border-transparent text-base font-medium rounded-xl text-white bg-gray-900 hover:bg-gray-800 transition-all duration-300 transform hover:scale-[1.02]">
-                            Start Chatting Now
-                        </button>
-                        <button id="signInForSync" class="inline-flex items-center px-8 py-4 border-2 border-gray-300 text-base font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-300">
-                            <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
-                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                            </svg>
-                            Sign in with Google
-                        </button>
-                    </div>
-                </div>
-
-                <div class="flex-1">
-                    <div class="glass-effect rounded-3xl p-8 backdrop-blur-lg">
-                        <div class="space-y-4">
-                            <div class="flex items-start space-x-4">
-                                <div class="flex-shrink-0 bg-gray-200 rounded-full p-2">
-                                    <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
-                                    </svg>
-                                </div>
-                                <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex-1">
-                                    <p class="text-gray-700">Hello! I'm At41rv AI. How can I assist you today?</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start space-x-4 justify-end">
-                                <div class="bg-gray-900 text-white rounded-2xl p-4 shadow-sm flex-1 max-w-md">
-                                    <p>What is the weather like today?</p>
-                                </div>
-                            </div>
-                            <div class="flex items-start space-x-4">
-                                <div class="flex-shrink-0 bg-gray-200 rounded-full p-2">
-                                    <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
-                                    </svg>
-                                </div>
-                                <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex-1">
-                                    <p class="text-gray-700">I can get that for you. One moment...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    
+    <div id="welcomeScreen">
         </div>
-
-        <div id="about" class="bg-white border-t border-gray-200">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-                <div class="text-center mb-12">
-                    <h2 class="text-3xl font-bold text-gray-900 mb-4">About At41rv's Models</h2>
-                    <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-                        At41rv now offers specialized AI models to better suit your needs.
-                    </p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div class="text-center p-6">
-                        <div class="bg-gray-100 rounded-2xl p-4 inline-block mb-4">
-                            <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Fast & Best Answers</h3>
-                        <p class="text-gray-600">Utilizing the <strong>At41rv</strong> model for quick and highly accurate responses, perfect for general questions and quick assistance.</p>
-                    </div>
-                    <div class="text-center p-6">
-                        <div class="bg-gray-100 rounded-2xl p-4 inline-block mb-4">
-                            <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        </div>
-                        <h3 class="text-xl font-semibold text-gray-900 mb-2">Live Search</h3>
-                        <p class="text-gray-600">Powered by <strong>At41rv LIVE</strong>, this model automatically activates to provide real-time information for queries about news, dates, time, and more.</p>
-                    </div>
-                    <div class="text-center p-6">
-                        <div class="bg-gray-100 rounded-2xl p-4 inline-block mb-4">
-                            <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-semibold text-gray-900 mb-2">At41rv Thinking</h3>
-                        <p class="text-gray-600">Using the <strong>deepseek-r1-distill-llama-70b</strong> model, this excels at more complex, creative, and thoughtful tasks like writing essays or in-depth analysis.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <footer class="bg-gray-900 text-white">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                        <h3 class="text-xl font-bold mb-4">At41rv AI Assistant</h3>
-                        <p class="text-gray-400 max-w-md">
-                            Your intelligent companion for seamless conversations and assistance.
-                        </p>
-                    </div>
-                    <div class="md:text-right">
-                        <h3 class="text-xl font-bold mb-4">Contact</h3>
-                        <a href="mailto:at41rv@gmail.com" class="text-gray-400 hover:text-white transition-colors">
-                            at41rv@gmail.com
-                        </a>
-                    </div>
-                </div>
-                <div class="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-                    <p>&copy; 2025 At41rv. All rights reserved.</p>
-                </div>
-            </div>
-        </footer>
-    </div>
 
     <div id="chatInterface" class="hidden">
         <div class="nav-header">
@@ -428,9 +43,7 @@
                 <div class="flex justify-between items-center">
                     <div class="flex items-center space-x-4">
                         <button id="historyButton" class="nav-button">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                            </svg>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                         </button>
                         <div class="flex flex-col">
                             <h2 class="text-xl font-bold text-gray-900">At41rv</h2>
@@ -447,237 +60,91 @@
                     <div class="flex items-center space-x-3">
                         <div class="relative">
                             <select id="modelSelector" class="nav-button bg-gray-100 border border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                              <option value="llama-3.1-8b-instant">At41rv Fast</option>
-                               <option value="deepseek-r1-distill-llama-70b">At41rv Thinking</option>
+                                <option value="llama-3.1-8b-instant">At41rv Fast</option>
+                                <option value="deepseek-r1-distill-llama-70b">At41rv Thinking</option>
                             </select>
                         </div>
+                        
+                        <button id="shareChatButton" class="nav-button" title="Share Conversation">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12s-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.368a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"></path></svg>
+                        </button>
+
                         <button id="settingsButton" class="nav-button">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         </button>
-                        <button id="clearChatButton" class="nav-button px-4 py-2 text-sm font-medium">
-                            Clear Chat
-                        </button>
+                        <button id="clearChatButton" class="nav-button px-4 py-2 text-sm font-medium">Clear Chat</button>
                     </div>
                 </div>
             </div>
         </div>
+
         <div class="container mx-auto px-4 py-6 max-w-7xl">
+            <div id="chatHistorySidebar" class="fixed inset-y-0 left-0 w-80 bg-white shadow-xl transform -translate-x-full transition-transform duration-300 ease-in-out z-50">...</div>
+            <div class="glass-effect rounded-3xl shadow-2xl overflow-hidden flex-1 border border-gray-200/50 max-w-6xl mx-auto">
+                <div class="relative h-[calc(100vh-12rem)] md:h-[calc(100vh-14rem)] flex flex-col">
+                    <div id="chatMessages" class="chat-messages overflow-y-auto p-6 md:p-8 space-y-6 md:space-y-8 flex-1"></div>
+                    <div id="typingIndicator" class="px-6 pb-4 hidden">...</div>
+                    <div class="input-container border-t border-gray-200/50 bg-white/80 backdrop-blur-sm p-6 md:p-8">...</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-
-            <div class="flex gap-6">
-                <div id="chatHistorySidebar" class="fixed inset-y-0 left-0 w-80 bg-white shadow-xl transform -translate-x-full transition-transform duration-300 ease-in-out z-50">
-                    <div class="h-full flex flex-col">
-                        <div class="p-4 border-b border-gray-200 flex justify-between items-center">
-                            <h3 class="text-lg font-semibold text-gray-900">Chat History</h3>
-                            <button id="closeHistoryButton" class="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-all">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
+    <div id="settingsModal" class="fixed inset-0 error-modal-bg hidden items-center justify-center z-50">
+        <div class="error-modal-content rounded-3xl p-8 max-w-lg mx-4 w-full">
+            <div class="flex justify-between items-center mb-6">...</div>
+            <div class="space-y-6">
+                <div class="border-b border-gray-200 pb-6">
+                    <h4 class="text-lg font-semibold text-gray-800 mb-4">Account</h4>
+                    <div id="accountSection">
+                        
+                        <div id="signedOutState" class="space-y-4">
+                            <p class="text-gray-600 text-sm">Sign in to sync your conversations across devices and access advanced features.</p>
+                            <div id="g_id_onload" data-client_id="465923208288-hb4182d5ro58k30pkshh4knu3i62bvrh.apps.googleusercontent.com" data-context="signin" data-ux_mode="popup" data-auto_prompt="false"></div>
+                            <div id="signInOptions">
+                                <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="left"></div>
+                                <div class="relative flex items-center justify-center my-4">
+                                    <div class="w-full border-t border-gray-300"></div>
+                                    <div class="relative px-2 bg-white text-gray-500 text-sm">Or</div>
+                                </div>
+                                <button id="showEmailFormButton" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-indigo-700 transition-all">Sign in with Email</button>
+                            </div>
+                            <div id="emailSignInForm" class="space-y-3 hidden">
+                                <input type="email" id="emailForSignIn" placeholder="Enter your email" class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 text-base">
+                                <button id="sendSignInLinkButton" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-indigo-700 transition-all">Send Sign-In Link</button>
+                                <p id="emailLinkMessage" class="text-sm text-center text-green-600 hidden"></p>
+                            </div>
                         </div>
-                        <div id="chatHistoryList" class="flex-1 overflow-y-auto p-4 space-y-3">
+
+                        <div id="signedInState" class="space-y-4 hidden">
+                            <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl">...</div>
+                            <button id="signOutButton" class="w-full bg-red-50 text-red-600 py-3 px-4 rounded-xl font-medium hover:bg-red-100">Sign Out</button>
                         </div>
                     </div>
                 </div>
-
-                <div class="glass-effect rounded-3xl shadow-2xl overflow-hidden flex-1 border border-gray-200/50 max-w-6xl mx-auto">
-                    <div class="relative h-[calc(100vh-12rem)] md:h-[calc(100vh-14rem)] flex flex-col">
-                        <div id="chatMessages" class="chat-messages overflow-y-auto p-6 md:p-8 space-y-6 md:space-y-8 flex-1">
-                            <div class="message-bubble flex justify-start">
-                                <div class="ai-message welcome-message rounded-2xl rounded-bl-lg px-8 py-6 max-w-2xl backdrop-blur-sm">
-                                    <p class="text-gray-700 text-lg font-medium leading-relaxed">
-                                        Hello! I'm At41rv AI. How can I help you today?
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div id="typingIndicator" class="px-6 pb-4 hidden">
-                            <div class="flex justify-start">
-                                <div class="ai-message rounded-2xl rounded-bl-lg px-6 py-4">
-                                    <div class="flex space-x-2">
-                                        <div class="w-2 h-2 bg-gray-400 rounded-full typing-indicator"></div>
-                                        <div class="w-2 h-2 bg-gray-400 rounded-full typing-indicator" style="animation-delay: 0.2s;"></div>
-                                        <div class="w-2 h-2 bg-gray-400 rounded-full typing-indicator" style="animation-delay: 0.4s;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="input-container border-t border-gray-200/50 bg-white/80 backdrop-blur-sm p-6 md:p-8">
-                            <div class="flex flex-col sm:flex-row gap-4">
-                                <div class="relative flex-1">
-                                    <input type="text" id="messageInput" placeholder="Type your message here..." class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-6 py-4 text-lg text-gray-700 placeholder-gray-400 transition-all duration-300 focus:border-gray-400 focus:ring-0"
-                                        maxlength="1000">
-                                </div>
-                                <button id="sendButton" class="send-button text-white px-8 py-4 rounded-xl text-lg font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[120px] hover:transform hover:scale-105"
-                                    disabled>
-                                Send
-                            </button>
-                            </div>
-                            <div class="mt-3 text-sm text-gray-400 text-center tracking-wide">
-                                Press Enter to send • Max 1000 characters
-                            </div>
-                        </div>
-                    </div>
                 </div>
+        </div>
+    </div>
 
-                <div id="settingsModal" class="fixed inset-0 error-modal-bg hidden items-center justify-center z-50 transition-all duration-200 opacity-0">
-                    <div class="error-modal-content rounded-3xl p-8 max-w-lg mx-4 w-full">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-2xl font-bold text-gray-800">Settings</h3>
-                            <button id="closeSettingsModal" class="p-2 text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-all">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
+    <div id="shareModal" class="hidden fixed inset-0 bg-gray-100 z-[100] p-4 sm:p-8">
+        <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl h-full flex flex-col">
+            <div class="p-6 border-b flex justify-between items-center">
+                <div>
+                    <h3 class="text-xl font-bold">Shared Conversation</h3>
+                    <p class="text-sm text-gray-500">A read-only view of a chat with At41rv AI.</p>
+                </div>
+                <button id="closeShareModal" class="p-2 rounded-full hover:bg-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
-                        </div>
-
-                        <div class="space-y-6">
-                            <div class="border-b border-gray-200 pb-6">
-                                <h4 class="text-lg font-semibold text-gray-800 mb-4">Account</h4>
-                                <div id="accountSection">
-                                    <div id="signedOutState" class="space-y-4">
-                                        <p class="text-gray-600 text-sm">Sign in to sync your conversations across devices and access advanced features.</p>
-
-                                        <div id="g_id_onload" data-client_id="465923208288-hb4182d5ro58k30pkshh4knu3i62bvrh.apps.googleusercontent.com" data-context="signin" data-ux_mode="popup" data-callback="handleCredentialResponse" data-auto_prompt="false">
-                                        </div>
-                                       <div id="signedOutState" class="space-y-4">
-                                     <p class="text-gray-600 text-sm">Sign in to sync your conversations...</p>
-                                <div class="g_id_signin" ...></div>
-
-                                   <div class="relative flex items-center justify-center my-4">
-                             <div class="w-full border-t border-gray-300"></div>
-                            <div class="relative px-2 bg-white text-gray-500 text-sm">Or</div>
-                  </div>
-
-    <div id="emailSignInForm" class="space-y-3">
-        <input type="email" id="emailForSignIn" placeholder="Enter your email" class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 text-base">
-        <button id="sendSignInLinkButton" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-indigo-700 transition-all">
-            Send Sign-In Link
-        </button>
-        <p id="emailLinkMessage" class="text-sm text-center text-green-600 hidden"></p>
+            </div>
+            <div id="sharedChatMessages" class="flex-1 overflow-y-auto p-6 space-y-6"></div>
+        </div>
     </div>
-    </div>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-                                        <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="left">
-                                        </div>
-                                    </div>
-
-                                    <div id="signedInState" class="space-y-4 hidden">
-                                        <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl">
-                                            <img id="settingsUserAvatar" src="" alt="User Avatar" class="w-12 h-12 rounded-full">
-                                            <div class="flex-1">
-                                                <div id="settingsUserName" class="font-semibold text-gray-800"></div>
-                                                <div id="settingsUserEmail" class="text-sm text-gray-600"></div>
-                                            </div>
-                                        </div>
-                                        <button id="signOutButton" class="w-full bg-red-50 text-red-600 py-3 px-4 rounded-xl font-medium hover:bg-red-100 transition-all duration-300">
-                                Sign Out
-                            </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="border-b border-gray-200 pb-6">
-                                <h4 class="text-lg font-semibold text-gray-800 mb-4">Chat Settings</h4>
-                                <div class="space-y-4">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <div class="font-medium text-gray-800">Auto-save conversations</div>
-                                            <div class="text-sm text-gray-600">Automatically save chats to your Google account</div>
-                                        </div>
-                                        <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="autoSaveToggle" class="sr-only peer" checked>
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                            </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <h4 class="text-lg font-semibold text-gray-800 mb-4">Support</h4>
-                                <div class="space-y-3">
-                                    <a href="mailto:at41rv@gmail.com" class="flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-50 transition-all">
-                                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                            </svg>
-                                        <div>
-                                            <div class="font-medium text-gray-800">Contact Support</div>
-                                            <div class="text-sm text-gray-600">at41rv@gmail.com</div>
-                                        </div>
-                                    </a>
-                                    <div class="text-xs text-gray-500 p-3 bg-gray-50 rounded-xl">
-                                        <p><strong>Version:</strong> 1.0</p>
-                                        <p><strong>Last Update:</strong> Today </p>
-                                        <p><strong>Privacy:</strong> Your conversations are secure and private</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="errorModal" class="fixed inset-0 error-modal-bg hidden items-center justify-center z-50">
-                    <div class="error-modal-content rounded-3xl p-8 max-w-md mx-4">
-                        <h3 class="text-2xl font-bold text-gray-800 mb-4">Error</h3>
-                        <p id="errorMessage" class="text-gray-600 mb-6 leading-relaxed"></p>
-                        <button id="closeErrorModal" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-3 rounded-2xl font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all duration-300">
-                Close
-            </button>
-                    </div>
-                </div>
-
-                <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://api.a4f.co; 
-                    script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://accounts.google.com/gsi/client; 
-                    style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; 
-                    img-src 'self' data: https:; 
-                    font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://generativelanguage.googleapis.com;">
-                <meta http-equiv="X-Content-Type-Options" content="nosniff">
-                <meta http-equiv="X-Frame-Options" content="DENY">
-                <meta http-equiv="X-XSS-Protection" content="1; mode=block">
-                <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-
-                <script>
-                    (function() {
-                        'use strict';
-
-                        // Disable console in production
-                        if (window.location.hostname !== 'localhost') {
-                            console.log = console.error = console.info = console.debug = console.warn = function() {};
-                        }
-
-                        // Prevent common attack vectors
-                        window.addEventListener('contextmenu', e => e.preventDefault());
-                        window.addEventListener('keydown', e => {
-                            if ((e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J')) ||
-                                (e.ctrlKey && e.key === 'U')) {
-                                e.preventDefault();
-                            }
-                        });
-
-                        // Additional security measures
-                        document.addEventListener('DOMContentLoaded', () => {
-                            // Prevent form submissions if not using HTTPS
-                            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-                                document.querySelectorAll('form').forEach(form => {
-                                    form.addEventListener('submit', e => {
-                                        e.preventDefault();
-                                        alert('Secure connection required');
-                                    });
-                                });
-                            }
-                        });
-                    })();
-                </script>
-
-                <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-                <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-
-       <script src="script.js"></script>
-
+    <script src="script.js"></script>
 </body>
 </html>
