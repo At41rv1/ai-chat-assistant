@@ -1,18 +1,16 @@
-// --- script.js ---
+// --- script.js (Updated) ---
 
 class AIChat {
     constructor() {
         this.currentUser = null;
         this.jwtToken = null;
         this.isAdmin = false;
-        this.isLoginMode = false; // To toggle between login/signup
-
-        // =================================================================
-        // ▼▼▼ VERY IMPORTANT: REPLACE THIS URL WITH YOUR LIVE RENDER URL ▼▼▼
-        // =================================================================
+        this.isLoginMode = false;
+        this.isSidebarOpen = false;
+        
+        // VERY IMPORTANT: REPLACE THIS URL WITH YOUR LIVE RENDER URL
         this.apiServerUrl = 'https://at41rv-chat-backend.onrender.com';
-        // =================================================================
-
+        
         this.initializeElements();
         this.attachEventListeners();
         this.checkSession();
@@ -20,20 +18,9 @@ class AIChat {
 
     initializeElements() {
         // Screens
-        this.welcomeScreen = document.getElementById('welcomeScreen');
         this.loginScreen = document.getElementById('loginScreen');
         this.chatInterface = document.getElementById('chatInterface');
 
-        // Home Page Elements
-        this.navLoggedOut = document.getElementById('nav-logged-out');
-        this.navLoggedIn = document.getElementById('nav-logged-in');
-        this.loginNavButton = document.getElementById('loginNavButton');
-        this.signupNavButton = document.getElementById('signupNavButton');
-        this.navUserName = document.getElementById('navUserName');
-        this.navUserAvatar = document.getElementById('navUserAvatar');
-        this.navLogoutButton = document.getElementById('navLogoutButton');
-        this.ctaButton = document.getElementById('ctaButton');
-        
         // Login Screen Elements
         this.loginTitle = document.getElementById('loginTitle');
         this.usernameInput = document.getElementById('usernameInput');
@@ -44,88 +31,66 @@ class AIChat {
         this.authButton = document.getElementById('authButton');
         this.authToggle = document.getElementById('authToggle');
         
-        // Chat Interface Elements
-        this.homeButton = document.getElementById('homeButton');
+        // Main Chat Interface Elements
+        this.sidebar = document.getElementById('sidebar');
+        this.sidebarToggle = document.getElementById('sidebarToggle');
+        this.newChatButton = document.getElementById('newChatButton');
+        this.userInfo = document.getElementById('userInfo');
+        this.userAvatar = document.getElementById('userAvatar');
+        this.userName = document.getElementById('userName');
+        this.logoutButton = document.getElementById('logoutButton');
+        this.modelSelector = document.getElementById('modelSelector');
         this.chatMessages = document.getElementById('chatMessages');
         this.messageInput = document.getElementById('messageInput');
         this.sendButton = document.getElementById('sendButton');
-        this.modelSelector = document.getElementById('modelSelector');
-        this.settingsButton = document.getElementById('settingsButton');
-        this.adminButton = document.getElementById('adminButton');
     }
 
     attachEventListeners() {
-        // Home page buttons
-        this.loginNavButton.addEventListener('click', () => this.showLoginScreen(true));
-        this.signupNavButton.addEventListener('click', () => this.showLoginScreen(false));
-        this.navLogoutButton.addEventListener('click', () => this.logout());
-        this.ctaButton.addEventListener('click', () => this.handleCtaClick());
-
-        // Login screen buttons
+        // Login screen
         this.authButton.addEventListener('click', () => this.handleAuthFormSubmit());
         this.authToggle.addEventListener('click', (e) => {
             e.preventDefault();
             this.toggleAuthMode();
         });
 
-        // Chat page buttons
-        this.homeButton.addEventListener('click', () => this.showHomePage());
-        if (this.sendButton) this.sendButton.addEventListener('click', () => this.sendMessage());
-        if (this.messageInput) {
-            this.messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); }});
-            this.messageInput.addEventListener('input', () => { this.sendButton.disabled = this.messageInput.value.trim().length === 0; });
-        }
+        // Sidebar and user
+        this.sidebarToggle.addEventListener('click', () => this.toggleSidebar());
+        this.logoutButton.addEventListener('click', () => this.logout());
+        this.newChatButton.addEventListener('click', () => this.resetChat());
+
+        // Chat input listeners for send button state and auto-growing textarea
+        this.messageInput.addEventListener('input', () => this.onInput());
+        this.messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendMessage();
+            }
+        });
+        this.sendButton.addEventListener('click', () => this.sendMessage());
     }
 
     // --- VIEW / SCREEN MANAGEMENT ---
 
-    showHomePage() {
-        this.welcomeScreen.style.display = 'block';
-        this.loginScreen.style.display = 'none';
-        this.chatInterface.classList.add('hidden');
-        this.updateHomePageUI();
-    }
-    
     showLoginScreen(isLogin = false) {
-        this.welcomeScreen.style.display = 'none';
-        this.loginScreen.style.display = 'flex';
+        this.loginScreen.classList.remove('hidden');
         this.chatInterface.classList.add('hidden');
         this.isLoginMode = isLogin;
         this.toggleAuthMode(isLogin);
     }
 
     showChatInterface() {
-        this.welcomeScreen.style.display = 'none';
-        this.loginScreen.style.display = 'none';
+        this.loginScreen.classList.add('hidden');
         this.chatInterface.classList.remove('hidden');
-        if (this.chatMessages) {
-             this.chatMessages.innerHTML = `<div class="message-bubble flex justify-start"><div class="ai-message welcome-message rounded-2xl rounded-bl-lg px-8 py-6 max-w-2xl"><p class="text-gray-700 text-lg font-medium leading-relaxed">Hello! I'm At41rv AI. How can I help you today?</p></div></div>`;
-        }
+        this.updateUserInfo();
     }
-
-    updateHomePageUI() {
-        if (this.currentUser) {
-            // Logged-in state
-            this.navLoggedOut.style.display = 'none';
-            this.navLoggedIn.style.display = 'flex';
-            this.navUserName.textContent = this.currentUser.name || this.currentUser.username;
-            if (this.currentUser.picture) {
-                this.navUserAvatar.src = this.currentUser.picture;
-                this.navUserAvatar.classList.remove('hidden');
-            } else {
-                this.navUserAvatar.classList.add('hidden');
-            }
-            this.ctaButton.textContent = 'Go to Chat';
-        } else {
-            // Logged-out state
-            this.navLoggedOut.style.display = 'flex';
-            this.navLoggedIn.style.display = 'none';
-            this.ctaButton.textContent = 'Get Started';
-        }
+    
+    toggleSidebar() {
+        this.isSidebarOpen = !this.isSidebarOpen;
+        this.sidebar.classList.toggle('active');
     }
 
     // --- AUTHENTICATION & SESSION ---
-
+    
     async checkSession() {
         const token = localStorage.getItem('jwtToken');
         const user = localStorage.getItem('aiChatCurrentUser');
@@ -133,15 +98,9 @@ class AIChat {
             this.jwtToken = token;
             this.currentUser = JSON.parse(user);
             this.isAdmin = this.currentUser.role === 'admin';
-        }
-        this.showHomePage();
-    }
-
-    handleCtaClick() {
-        if (this.currentUser) {
             this.showChatInterface();
         } else {
-            this.showLoginScreen(false); // Default to sign up
+            this.showLoginScreen(true); // Default to login mode
         }
     }
 
@@ -149,15 +108,15 @@ class AIChat {
         this.isLoginMode = isLogin;
         this.authError.classList.add('hidden');
         if (isLogin) {
-            this.loginTitle.textContent = 'Log In';
+            this.loginTitle.textContent = 'Welcome Back';
             this.authButton.textContent = 'Log In';
             this.confirmPasswordWrapper.style.display = 'none';
-            this.authToggle.innerHTML = `Don't have an account? <a href="#" class="font-medium text-indigo-600">Sign Up</a>`;
+            this.authToggle.innerHTML = `Don't have an account? <a href="#">Sign Up</a>`;
         } else {
-            this.loginTitle.textContent = 'Sign Up';
+            this.loginTitle.textContent = 'Create Account';
             this.authButton.textContent = 'Create Account';
             this.confirmPasswordWrapper.style.display = 'block';
-            this.authToggle.innerHTML = `Already have an account? <a href="#" class="font-medium text-indigo-600">Log In</a>`;
+            this.authToggle.innerHTML = `Already have an account? <a href="#">Log In</a>`;
         }
     }
 
@@ -167,25 +126,18 @@ class AIChat {
         this.authError.classList.add('hidden');
 
         try {
-            let response;
             const endpoint = this.isLoginMode ? '/api/auth/login' : '/api/auth/signup';
-            
-            if (!this.isLoginMode) {
-                const confirmPassword = this.confirmPasswordInput.value;
-                if (password !== confirmPassword) throw new Error("Passwords do not match.");
+            if (!this.isLoginMode && password !== this.confirmPasswordInput.value) {
+                throw new Error("Passwords do not match.");
             }
-
-            response = await fetch(`${this.apiServerUrl}${endpoint}`, {
+            const response = await fetch(`${this.apiServerUrl}${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password }),
             });
-
             const data = await response.json();
             if (!response.ok) throw new Error(data.message);
-
             this.loginSuccess(data);
-
         } catch (error) {
             this.authError.textContent = error.message;
             this.authError.classList.remove('hidden');
@@ -198,7 +150,7 @@ class AIChat {
         this.isAdmin = data.user.role === 'admin';
         localStorage.setItem('jwtToken', data.token);
         localStorage.setItem('aiChatCurrentUser', JSON.stringify(data.user));
-        this.showHomePage();
+        this.showChatInterface();
     }
     
     logout() {
@@ -207,24 +159,95 @@ class AIChat {
         this.currentUser = null;
         this.jwtToken = null;
         this.isAdmin = false;
-        this.showHomePage();
+        this.showLoginScreen(true);
     }
     
-    // --- Core Chat Logic ---
-    async sendMessage() {
-        // This is a placeholder for your chat logic.
-        // It should get the message from messageInput, call the AI,
-        // display the messages, and save them to your backend.
-        console.log("Sending message...");
+    updateUserInfo() {
+        if (!this.currentUser) return;
+        const displayName = this.currentUser.name || this.currentUser.username;
+        this.userName.textContent = displayName;
+        if (this.currentUser.picture) {
+            this.userAvatar.src = this.currentUser.picture;
+        } else {
+            // Use first letter as avatar fallback
+            this.userAvatar.outerHTML = `<div class="avatar-fallback">${displayName.charAt(0).toUpperCase()}</div>`;
+        }
+    }
+
+    // --- CORE CHAT LOGIC ---
+
+    onInput() {
+        const input = this.messageInput;
+        // Auto-resize textarea
+        input.style.height = 'auto';
+        input.style.height = (input.scrollHeight) + 'px';
+        // Toggle send button state
+        if (input.value.trim().length > 0) {
+            this.sendButton.classList.add('active');
+        } else {
+            this.sendButton.classList.remove('active');
+        }
+    }
+
+    sendMessage() {
+        const messageText = this.messageInput.value.trim();
+        if (messageText.length === 0) return;
+
+        this.addMessage(messageText, 'user');
+        
+        // Reset input field after sending
+        this.messageInput.value = '';
+        this.onInput(); // Recalculate size and button state
+
+        // TODO: Add your fetch logic here to call the AI and get a response
+        // For now, we'll just simulate an AI response
+        setTimeout(() => {
+            this.addMessage("This is a simulated response from the AI.", 'ai');
+        }, 1000);
+    }
+
+    addMessage(text, role) {
+        const messageWrapper = document.createElement('div');
+        messageWrapper.className = `message-wrapper ${role}-message-wrapper`;
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${role}-message`;
+        
+        const avatar = document.createElement('img');
+        avatar.className = 'avatar';
+        // Replace with actual avatar logic
+        avatar.src = role === 'user' ? (this.currentUser.picture || `https://ui-avatars.com/api/?name=${this.currentUser.username}&background=374151&color=fff`) : 'https://i.imgur.com/G5iwwS0.png';
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'content';
+        contentDiv.textContent = text;
+        
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(contentDiv);
+        messageWrapper.appendChild(messageDiv);
+        
+        this.chatMessages.appendChild(messageWrapper);
+        this.chatMessages.scrollTop = this.chatMessages.scrollHeight; // Auto-scroll to bottom
+    }
+
+    resetChat() {
+        this.chatMessages.innerHTML = `
+            <div class="message-wrapper">
+                <div class="message ai-message">
+                    <img src="https://i.imgur.com/G5iwwS0.png" alt="AI" class="avatar">
+                    <div class="content">A new chat has started. How can I help?</div>
+                </div>
+            </div>`;
     }
 }
 
 // --- GLOBAL SCOPE ---
 function handleGoogleResponse(response) {
-    window.aiChat.handleGoogleLogin(response);
+    if (window.aiChat) {
+        window.aiChat.handleGoogleLogin(response);
+    }
 }
 
-// Add the handleGoogleLogin method to the AIChat class
 AIChat.prototype.handleGoogleLogin = async function(response) {
     try {
         const res = await fetch(`${this.apiServerUrl}/api/auth/google`, {
@@ -236,7 +259,8 @@ AIChat.prototype.handleGoogleLogin = async function(response) {
         if (!res.ok) throw new Error(data.message);
         this.loginSuccess(data);
     } catch (error) {
-        alert('Google Sign-In Failed: ' + error.message);
+        this.authError.textContent = 'Google Sign-In Failed: ' + error.message;
+        this.authError.classList.remove('hidden');
     }
 };
 
