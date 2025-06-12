@@ -457,6 +457,9 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             </svg>
                         </button>
+                         <button id="adminButton" class="hidden nav-button px-4 py-2 text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200">
+                            Admin
+                        </button>
                         <button id="clearChatButton" class="nav-button px-4 py-2 text-sm font-medium">
                             Clear Chat
                         </button>
@@ -594,7 +597,7 @@
                                         </div>
                                     </a>
                                     <div class="text-xs text-gray-500 p-3 bg-gray-50 rounded-xl">
-                                        <p><strong>Version:</strong> 1.0</p>
+                                        <p><strong>Version:</strong> 1.1 (Admin Panel)</p>
                                         <p><strong>Last Update:</strong> Today </p>
                                         <p><strong>Privacy:</strong> Your conversations are secure and private</p>
                                     </div>
@@ -603,6 +606,31 @@
                         </div>
                     </div>
                 </div>
+
+                <div id="adminModal" class="fixed inset-0 error-modal-bg hidden items-center justify-center z-50 transition-all duration-200 opacity-0">
+                    <div class="error-modal-content rounded-3xl p-6 max-w-6xl w-full h-[90vh] flex flex-col">
+                        <div class="flex justify-between items-center mb-4 pb-4 border-b border-gray-200">
+                            <h3 class="text-2xl font-bold text-gray-800">Admin Panel</h3>
+                            <button id="closeAdminModal" class="p-2 text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-all">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                        <div class="flex-1 flex gap-6 overflow-hidden">
+                            <div class="w-1/3 flex flex-col border-r border-gray-200 pr-4">
+                                <h4 class="text-lg font-semibold text-gray-800 mb-3">Users</h4>
+                                <div id="adminUserList" class="flex-1 overflow-y-auto space-y-2">
+                                    </div>
+                            </div>
+                            <div class="w-2/3 flex flex-col">
+                                 <h4 class="text-lg font-semibold text-gray-800 mb-3">Conversation History</h4>
+                                <div id="adminChatView" class="flex-1 overflow-y-auto bg-gray-50 rounded-xl p-4 space-y-4">
+                                   <p class="text-gray-500 text-center mt-8">Select a user to see their chat history.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
 
                 <div id="errorModal" class="fixed inset-0 error-modal-bg hidden items-center justify-center z-50">
                     <div class="error-modal-content rounded-3xl p-8 max-w-md mx-4">
