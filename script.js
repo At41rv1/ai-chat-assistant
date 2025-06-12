@@ -6,8 +6,13 @@ class AIChat {
         this.jwtToken = null;
         this.isAdmin = false;
         this.isLoginMode = false; // To toggle between login/signup
-        this.apiServerUrl = 'http://localhost:3000'; // Change when deploying
-        
+
+        // =================================================================
+        // ▼▼▼ VERY IMPORTANT: REPLACE THIS URL WITH YOUR LIVE RENDER URL ▼▼▼
+        // =================================================================
+        this.apiServerUrl = 'https://your-backend-name.onrender.com';
+        // =================================================================
+
         this.initializeElements();
         this.attachEventListeners();
         this.checkSession();
@@ -42,7 +47,11 @@ class AIChat {
         // Chat Interface Elements
         this.homeButton = document.getElementById('homeButton');
         this.chatMessages = document.getElementById('chatMessages');
-        // ... other chat elements
+        this.messageInput = document.getElementById('messageInput');
+        this.sendButton = document.getElementById('sendButton');
+        this.modelSelector = document.getElementById('modelSelector');
+        this.settingsButton = document.getElementById('settingsButton');
+        this.adminButton = document.getElementById('adminButton');
     }
 
     attachEventListeners() {
@@ -61,7 +70,11 @@ class AIChat {
 
         // Chat page buttons
         this.homeButton.addEventListener('click', () => this.showHomePage());
-        // ... other chat event listeners
+        if (this.sendButton) this.sendButton.addEventListener('click', () => this.sendMessage());
+        if (this.messageInput) {
+            this.messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.sendMessage(); }});
+            this.messageInput.addEventListener('input', () => { this.sendButton.disabled = this.messageInput.value.trim().length === 0; });
+        }
     }
 
     // --- VIEW / SCREEN MANAGEMENT ---
@@ -85,8 +98,9 @@ class AIChat {
         this.welcomeScreen.style.display = 'none';
         this.loginScreen.style.display = 'none';
         this.chatInterface.classList.remove('hidden');
-        // Reset chat messages on entry
-        this.chatMessages.innerHTML = `<div class="ai-message ...">Hello! I'm At41rv AI. How can I help you?</div>`;
+        if (this.chatMessages) {
+             this.chatMessages.innerHTML = `<div class="message-bubble flex justify-start"><div class="ai-message welcome-message rounded-2xl rounded-bl-lg px-8 py-6 max-w-2xl"><p class="text-gray-700 text-lg font-medium leading-relaxed">Hello! I'm At41rv AI. How can I help you today?</p></div></div>`;
+        }
     }
 
     updateHomePageUI() {
@@ -154,25 +168,18 @@ class AIChat {
 
         try {
             let response;
-            if (this.isLoginMode) {
-                // Handle Login
-                response = await fetch(`${this.apiServerUrl}/api/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password }),
-                });
-            } else {
-                // Handle Sign Up
+            const endpoint = this.isLoginMode ? '/api/auth/login' : '/api/auth/signup';
+            
+            if (!this.isLoginMode) {
                 const confirmPassword = this.confirmPasswordInput.value;
-                if (password !== confirmPassword) {
-                    throw new Error("Passwords do not match.");
-                }
-                response = await fetch(`${this.apiServerUrl}/api/auth/signup`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password }),
-                });
+                if (password !== confirmPassword) throw new Error("Passwords do not match.");
             }
+
+            response = await fetch(`${this.apiServerUrl}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+            });
 
             const data = await response.json();
             if (!response.ok) throw new Error(data.message);
@@ -203,23 +210,32 @@ class AIChat {
         this.showHomePage();
     }
     
-    // All other methods (for chat, admin, etc.) remain largely the same.
-    // They will continue to use `this.jwtToken` for authorized requests.
+    // --- Core Chat Logic ---
+    async sendMessage() {
+        // This is a placeholder for your chat logic.
+        // It should get the message from messageInput, call the AI,
+        // display the messages, and save them to your backend.
+        console.log("Sending message...");
+    }
 }
 
 // --- GLOBAL SCOPE ---
-window.handleGoogleResponse = async function(response) {
+function handleGoogleResponse(response) {
+    window.aiChat.handleGoogleLogin(response);
+}
+
+// Add the handleGoogleLogin method to the AIChat class
+AIChat.prototype.handleGoogleLogin = async function(response) {
     try {
-        const res = await fetch(`${window.aiChat.apiServerUrl}/api/auth/google`, {
+        const res = await fetch(`${this.apiServerUrl}/api/auth/google`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: response.credential }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.message);
-        window.aiChat.loginSuccess(data);
+        this.loginSuccess(data);
     } catch (error) {
-        // Can't show error on login screen if it's not visible
         alert('Google Sign-In Failed: ' + error.message);
     }
 };
