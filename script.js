@@ -7,11 +7,13 @@ class AIChat {
         this.currentUser = null;
         this.autoSave = true;
         this.isSidebarOpen = false;
+        this.isAdmin = false; // Admin flag
 
         this.initializeElements();
         this.attachEventListeners();
         this.loadSavedSettings();
         this.showWelcomeScreen();
+        this.updateAdminUI(); // Check admin status on load
 
         // Set initial model based on default
         this.setModelConfig(this.model);
@@ -33,6 +35,10 @@ class AIChat {
         const savedUser = localStorage.getItem('aiChatUser');
         if (savedUser) {
             this.currentUser = JSON.parse(savedUser);
+            // Check for Admin
+            if (this.currentUser.email === 'at41rv@gmail.com') {
+                this.isAdmin = true;
+            }
         }
 
         const autoSave = localStorage.getItem('autoSave');
@@ -60,6 +66,7 @@ class AIChat {
                 this.loadConversationHistory();
             }
         }
+        this.updateAdminUI();
     }
 
     showWelcomeScreen() {
@@ -100,6 +107,13 @@ class AIChat {
         this.errorModal = document.getElementById('errorModal');
         this.errorMessage = document.getElementById('errorMessage');
         this.closeErrorModal = document.getElementById('closeErrorModal');
+        
+        // Admin Panel Elements
+        this.adminButton = document.getElementById('adminButton');
+        this.adminModal = document.getElementById('adminModal');
+        this.closeAdminModal = document.getElementById('closeAdminModal');
+        this.adminUserList = document.getElementById('adminUserList');
+        this.adminChatView = document.getElementById('adminChatView');
     }
 
     attachEventListeners() {
@@ -119,6 +133,7 @@ class AIChat {
         }
 
         this.attachSettingsListeners();
+        this.attachAdminListeners(); // Attach listeners for the admin panel
 
         if (this.historyButton) {
             this.historyButton.addEventListener('click', () => this.toggleSidebar());
@@ -414,17 +429,21 @@ class AIChat {
             this.loadSavedSettings();
         }
 
+        this.updateAdminUI();
         this.focusInput();
     }
 
     signOut() {
         const previousUserId = this.currentUser ? this.currentUser.id : null;
         if (previousUserId && this.autoSave) {
-            localStorage.removeItem(`chatHistory_${previousUserId}`);
+            // We don't remove chat history on sign-out anymore, so admin can see it.
+            // localStorage.removeItem(`chatHistory_${previousUserId}`);
         }
 
         this.currentUser = null;
         localStorage.removeItem('aiChatUser');
+        this.isAdmin = false;
+        this.updateAdminUI();
 
         if (this.userInfo) this.userInfo.classList.add('hidden');
 
@@ -695,6 +714,131 @@ class AIChat {
             localStorage.removeItem(`chatHistory_${this.currentUser.id}`);
         }
     }
+    
+    // --- ADMIN PANEL LOGIC ---
+
+    updateAdminUI() {
+        if (this.adminButton) {
+            if (this.isAdmin) {
+                this.adminButton.classList.remove('hidden');
+            } else {
+                this.adminButton.classList.add('hidden');
+            }
+        }
+    }
+
+    attachAdminListeners() {
+        if (this.adminButton) {
+            this.adminButton.addEventListener('click', () => this.showAdminPanel());
+        }
+        if (this.closeAdminModal) {
+            this.closeAdminModal.addEventListener('click', () => this.hideAdminPanel());
+        }
+        if (this.adminModal) {
+            this.adminModal.addEventListener('click', (e) => {
+                if (e.target === this.adminModal) {
+                    this.hideAdminPanel();
+                }
+            });
+        }
+    }
+
+    showAdminPanel() {
+        if (!this.isAdmin) return;
+        this.populateAdminUserList();
+        if (this.adminModal) {
+            this.adminModal.classList.remove('hidden');
+            this.adminModal.style.display = 'flex';
+             requestAnimationFrame(() => {
+                this.adminModal.style.opacity = '1';
+            });
+        }
+    }
+
+    hideAdminPanel() {
+        if (this.adminModal) {
+            this.adminModal.style.opacity = '0';
+            setTimeout(() => {
+                this.adminModal.classList.add('hidden');
+                this.adminModal.style.display = 'none';
+            }, 200);
+        }
+    }
+    
+    populateAdminUserList() {
+        if (!this.adminUserList) return;
+        const users = JSON.parse(localStorage.getItem('allAppUsers')) || [];
+        this.adminUserList.innerHTML = '';
+        
+        if(users.length === 0){
+            this.adminUserList.innerHTML = `<p class="text-gray-500 text-sm">No user data found in this browser.</p>`;
+            return;
+        }
+
+        users.forEach(user => {
+            const userElement = document.createElement('div');
+            userElement.className = 'flex items-center space-x-3 p-2 rounded-lg cursor-pointer hover:bg-gray-100';
+            userElement.dataset.userId = user.id;
+            
+            userElement.innerHTML = `
+                <img src="${user.picture}" alt="Avatar" class="w-10 h-10 rounded-full">
+                <div>
+                    <div class="font-semibold text-sm text-gray-800">${this.escapeHtml(user.name)}</div>
+                    <div class="text-xs text-gray-500">${this.escapeHtml(user.email)}</div>
+                </div>
+            `;
+            
+            userElement.addEventListener('click', () => {
+                 // Highlight selected user
+                this.adminUserList.querySelectorAll('.bg-gray-200').forEach(el => el.classList.remove('bg-gray-200'));
+                userElement.classList.add('bg-gray-200');
+                this.displayUserHistory(user.id);
+            });
+            this.adminUserList.appendChild(userElement);
+        });
+    }
+    
+    displayUserHistory(userId) {
+        if (!this.adminChatView) return;
+        const history = JSON.parse(localStorage.getItem(`chatHistory_${userId}`)) || [];
+        this.adminChatView.innerHTML = '';
+        
+        if (history.length === 0) {
+            this.adminChatView.innerHTML = `<p class="text-gray-500 text-center mt-8">This user has no saved chat history.</p>`;
+            return;
+        }
+        
+        history.forEach(msg => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message-bubble flex';
+
+            if (msg.role === 'user') {
+                messageDiv.classList.add('justify-end');
+                messageDiv.innerHTML = `
+                    <div class="bg-gray-800 text-white rounded-2xl rounded-br-none px-4 py-2 max-w-lg shadow-md">
+                        <p class="text-sm font-medium">${this.escapeHtml(msg.content)}</p>
+                    </div>
+                `;
+            } else { // assistant
+                messageDiv.classList.add('justify-start');
+                messageDiv.innerHTML = `
+                    <div class="bg-white border rounded-2xl rounded-bl-none px-4 py-2 max-w-lg shadow-md">
+                        <p class="text-sm text-gray-700 font-medium">${this.formatMessage(msg.content)}</p>
+                    </div>
+                `;
+            }
+            this.adminChatView.appendChild(messageDiv);
+        });
+        this.adminChatView.scrollTop = this.adminChatView.scrollHeight;
+    }
+
+    trackUser(userData) {
+        if (!userData || !userData.id) return;
+        let users = JSON.parse(localStorage.getItem('allAppUsers')) || [];
+        let userMap = new Map(users.map(u => [u.id, u]));
+        userMap.set(userData.id, userData); // Adds or updates the user data
+        localStorage.setItem('allAppUsers', JSON.stringify(Array.from(userMap.values())));
+    }
 }
 
 window.handleCredentialResponse = function(response) {
@@ -710,6 +854,14 @@ window.handleCredentialResponse = function(response) {
 
         window.aiChat.currentUser = userData;
         localStorage.setItem('aiChatUser', JSON.stringify(userData));
+        
+        // Track user for admin panel
+        window.aiChat.trackUser(userData);
+        
+        // Set admin flag if email matches
+        if(userData.email === 'at41rv@gmail.com') {
+            window.aiChat.isAdmin = true;
+        }
 
         window.aiChat.hideSettings();
         window.aiChat.showChatInterface();
