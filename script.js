@@ -1,4 +1,28 @@
+// PASTE YOUR FIREBASE CONFIG FROM STEP 1 HERE
+
+           const firebaseConfig = {
+
+       apiKey: "AIzaSyDVqMiGSndJ_-emkCp1VUwOWXYwtjtzLM4",
+
+             authDomain: "at41rvai-1abf9.firebaseapp.com",
+
+  // ... a reste est identique ...
+
+};
+
+
+
+// Initialize Firebase
+
+       firebase.initializeApp(firebaseConfig);
+
+    const auth = firebase.auth();
+ 
+
+
 class AIChat {
+
+   
     constructor() {
         this.apiKey = ''; // This will be set based on the selected model
         this.baseUrl = ''; // This will be set based on the selected model
