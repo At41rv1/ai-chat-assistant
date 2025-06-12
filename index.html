@@ -5,20 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>At41rv AI Assistant</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
-    <div id="app-container">
+    <!-- This main container holds the entire app logic -->
+    <div id="app-root">
 
-        <div id="loginScreen" class="hidden">
+        <!-- Login Screen (Initially Hidden) -->
+        <div id="loginScreen" class="view hidden">
             <div class="login-card">
-                <h1 id="loginTitle">Welcome</h1>
-                <p>Sign in or create an account to begin.</p>
-                
+                <h1 id="loginTitle">Welcome Back</h1>
+                <p>Sign in or create an account to continue.</p>
                 <div class="form-group">
                     <label for="usernameInput">Username</label>
                     <input type="text" id="usernameInput" placeholder="Enter a username">
@@ -32,69 +31,80 @@
                     <input type="password" id="confirmPasswordInput" placeholder="Confirm your password">
                 </div>
                 <p id="authError" class="error-message hidden"></p>
-
-                <button id="authButton" class="auth-button">Create Account</button>
-                <p id="authToggle" class="auth-toggle">Already have an account? <a href="#">Log In</a></p>
+                <button id="authButton" class="auth-button">Log In</button>
+                <p id="authToggle" class="auth-toggle">Don't have an account? <a href="#">Sign Up</a></p>
                 <div class="divider">OR</div>
                 <div id="g_id_onload" data-client_id="465923208288-hb4182d5ro58k30pkshh4knu3i62bvrh.apps.googleusercontent.com" data-context="signin" data-ux_mode="popup" data-callback="handleGoogleResponse" data-auto_prompt="false"></div>
-                <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="left"></div>
+                <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="filled_blue" data-text="signin_with" data-size="large" data-logo_alignment="left"></div>
             </div>
         </div>
 
-        <div id="chatInterface" class="hidden">
+        <!-- Main Chat Interface -->
+        <div id="chatInterface" class="view hidden">
             <aside id="sidebar">
-                <div class="sidebar-header">
-                    <h1 class="logo">At41rv</h1>
-                    <button id="newChatButton" class="sidebar-button">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11 11V5H13V11H19V13H13V19H11V13H5V11H11Z"></path></svg>
-                        New Chat
-                    </button>
-                </div>
-                <div class="sidebar-content">
-                    </div>
+                <div class="sidebar-header"><h1 class="logo">At41rv</h1></div>
+                <div class="sidebar-content"><button id="newChatButton" class="sidebar-button">New Chat</button></div>
                 <div class="sidebar-footer">
                     <div id="userInfo" class="user-info">
-                        <img id="userAvatar" src="" alt="U">
+                        <div id="userAvatar" class="avatar"></div>
                         <span id="userName"></span>
                     </div>
-                    <button id="logoutButton" class="logout-button" title="Logout">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M5 21V3H12V5H7V19H12V21H5ZM16.6158 17.9497L15.2016 16.5355L17.2871 14.45H9V12.55H17.2871L15.2016 10.4645L16.6158 9.05029L21 13.5L16.6158 17.9497Z"></path></svg>
-                    </button>
-                </div>
-            </aside>
-            <button id="sidebarToggle" class="sidebar-toggle">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 4H21V6H3V4ZM3 11H21V13H3V11ZM3 18H21V20H3V18Z"></path></svg>
-            </button>
-
-            <main id="chatArea">
-                <div class="chat-header">
-                    <div class="model-selector-wrapper">
-                        <select id="modelSelector">
-                            <option value="llama-3.1-8b-instant">⚡ At41rv Fast</option>
-                            <option value="deepseek-r1-distill-llama-70b">🧠 At41rv Thinking</option>
-                        </select>
+                    <div id="userMenu">
+                         <button id="adminNavButton" class="menu-button hidden" title="Admin Panel">A</button>
+                        <button id="logoutButton" class="menu-button" title="Logout">L</button>
                     </div>
                 </div>
+            </aside>
+            <main id="chatArea">
+                <div class="chat-header">
+                    <button id="sidebarToggle" class="sidebar-toggle">Menu</button>
+                    <select id="modelSelector">
+                        <option value="llama-3.1-8b-instant">⚡ At41rv Fast</option>
+                        <option value="deepseek-r1-distill-llama-70b">🧠 At41rv Thinking</option>
+                    </select>
+                </div>
+                <div id="chatMessages" class="chat-messages"></div>
+                <div class="chat-input-area">
+                    <div class="chat-input-wrapper">
+                        <textarea id="messageInput" placeholder="Type your message..." rows="1"></textarea>
+                        <button id="sendButton" title="Send Message" class="send-button"></button>
+                    </div>
+                </div>
+            </main>
+        </div>
 
-                <div id="chatMessages" class="chat-messages">
-                    <div class="message-wrapper">
-                        <div class="message ai-message">
-                            <img src="https://i.imgur.com/G5iwwS0.png" alt="AI" class="avatar">
-                            <div class="content">Hello! I'm At41rv, your AI assistant. How can I help you today?</div>
+        <!-- Admin Dashboard -->
+        <div id="adminPanel" class="view hidden">
+            <div class="admin-header">
+                <h1>Admin Dashboard</h1>
+                <button id="closeAdminPanel" class="close-button">Back to Chat</button>
+            </div>
+            <div class="admin-content">
+                <div class="admin-stats">
+                    <div class="stat-card"><h3>Total Users</h3><p id="totalUsersStat">0</p></div>
+                    <div class="stat-card"><h3>Total Messages</h3><p id="totalMessagesStat">0</p></div>
+                    <div class="stat-card"><h3>Google Users</h3><p id="googleUsersStat">0</p></div>
+                    <div class="stat-card"><h3>Username Users</h3><p id="usernameUsersStat">0</p></div>
+                </div>
+                <div class="admin-main-area">
+                    <div class="user-list-wrapper">
+                        <h2>All Users</h2>
+                        <input type="text" id="userSearchInput" placeholder="Search users...">
+                        <div class="table-wrapper">
+                            <table id="userTable">
+                                <thead><tr><th>User</th><th>Type</th><th>Joined</th></tr></thead>
+                                <tbody id="userTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="chat-history-wrapper">
+                        <h2>Conversation History</h2>
+                        <div id="adminChatView" class="admin-chat-view">
+                            <p class="placeholder">Select a user to view their chat history.</p>
                         </div>
                     </div>
                 </div>
-
-                <div class="chat-input-area">
-                    <div class="chat-input-wrapper">
-                        <textarea id="messageInput" placeholder="Type your message here..." rows="1"></textarea>
-                        <button id="sendButton" title="Send Message" class="send-button">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3.47826 2.40496L20.5217 11.2383C21.4717 11.7133 21.4717 12.2866 20.5217 12.7616L3.47826 21.595C2.52826 22.0699 1.5 21.2883 1.5 20.2333V3.76662C1.5 2.71162 2.52826 1.93003 3.47826 2.40496Z"></path></svg>
-                        </button>
-                    </div>
-                    <p class="footer-text">At41rv can make mistakes. Consider checking important information.</p>
-                </div>
-            </main>
+            </div>
         </div>
     </div>
 
