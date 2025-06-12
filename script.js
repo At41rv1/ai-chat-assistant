@@ -10,7 +10,7 @@ class AIChat {
         // =================================================================
         // ▼▼▼ VERY IMPORTANT: REPLACE THIS URL WITH YOUR LIVE RENDER URL ▼▼▼
         // =================================================================
-        this.apiServerUrl = 'https://your-backend-name.onrender.com';
+        this.apiServerUrl = 'https://at41rv-chat-backend.onrender.com';
         // =================================================================
 
         this.initializeElements();
