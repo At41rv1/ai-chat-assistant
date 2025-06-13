@@ -283,6 +283,7 @@ class AIChat {
         this.signInForSync.addEventListener('click', () => this.signInWithGoogle());
 
         // Chat interface buttons
+        this.homeButton.addEventListener('click', () => this.showWelcomeScreen());
         this.settingsButton.addEventListener('click', () => this.showSettings());
         this.historyButton.addEventListener('click', () => this.toggleSidebar());
         this.closeHistoryButton.addEventListener('click', () => this.toggleSidebar());
