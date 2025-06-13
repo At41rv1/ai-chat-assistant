@@ -318,7 +318,7 @@
                             <h1 class="text-2xl font-bold text-gray-900">At41rv</h1>
                         </div>
                         <div class="flex items-center space-x-4">
-                            <a href="#about" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg text-sm font-medium">About</a>
+                            <a href="#pricing" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg text-sm font-medium">Pricing</a>
                             <a href="mailto:at41rv@gmail.com" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg text-sm font-medium">Contact</a>
                         </div>
                     </div>
@@ -335,10 +335,10 @@
                             Experience seamless conversations with At41rv, your AI companion designed to help, assist, and engage in meaningful dialogue.
                         </p>
                         <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                            <button id="continueWithoutLogin" class="inline-flex items-center px-8 py-4 border border-transparent text-base font-medium rounded-xl text-white bg-gray-900 hover:bg-gray-800 transition-all duration-300 transform hover:scale-[1.02]">
+                            <button id="continueWithoutLogin" class="inline-flex items-center justify-center px-8 py-4 border border-transparent text-base font-medium rounded-xl text-white bg-gray-900 hover:bg-gray-800 transition-all duration-300 transform hover:scale-[1.02]">
                                 Start Chatting Now
                             </button>
-                            <button id="signInForSync" class="inline-flex items-center px-8 py-4 border-2 border-gray-300 text-base font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-300">
+                            <button id="signInForSync" class="inline-flex items-center justify-center px-8 py-4 border-2 border-gray-300 text-base font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-300">
                                 <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
                                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -384,43 +384,58 @@
                 </div>
             </div>
 
-            <div id="about" class="bg-white border-t border-gray-200">
+            <div id="pricing" class="bg-white border-y border-gray-200">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
                     <div class="text-center mb-12">
-                        <h2 class="text-3xl font-bold text-gray-900 mb-4">About At41rv's Models</h2>
+                        <h2 class="text-4xl font-bold text-gray-900 mb-4">Choose Your Plan</h2>
                         <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-                            At41rv now offers specialized AI models to better suit your needs.
+                            Select the perfect plan to match your conversational needs.
                         </p>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div class="text-center p-6">
-                            <div class="bg-gray-100 rounded-2xl p-4 inline-block mb-4">
-                                <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                            </div>
-                            <h3 class="text-xl font-semibold text-gray-900 mb-2">Fast & Best Answers</h3>
-                            <p class="text-gray-600">Utilizing the <strong>At41rv</strong> model for quick and highly accurate responses, perfect for general questions and quick assistance.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                        <div class="border border-gray-200 rounded-2xl p-8 flex flex-col text-center shadow-lg transition-transform transform hover:scale-105">
+                            <h3 class="text-2xl font-semibold text-gray-800">Basic</h3>
+                            <p class="text-4xl font-bold text-gray-900 my-6">Free</p>
+                            <ul class="space-y-4 text-left text-gray-600 mb-8 flex-grow">
+                                <li class="flex items-center">
+                                    <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <span><strong>At41rv Fast Model:</strong> For quick and accurate answers.</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <span>Standard Chat Features</span>
+                                </li>
+                            </ul>
+                            <button id="startFree" class="w-full bg-gray-900 text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-700 transition-all">
+                                Get Started
+                            </button>
                         </div>
-                        <div class="text-center p-6">
-                            <div class="bg-gray-100 rounded-2xl p-4 inline-block mb-4">
-                                <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                            </div>
-                            <h3 class="text-xl font-semibold text-gray-900 mb-2">Live Search</h3>
-                            <p class="text-gray-600">Powered by <strong>At41rv LIVE</strong>, this model automatically activates to provide real-time information for queries about news, dates, time, and more.</p>
-                        </div>
-                        <div class="text-center p-6">
-                            <div class="bg-gray-100 rounded-2xl p-4 inline-block mb-4">
-                                <svg class="w-8 h-8 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                </svg>
-                            </div>
-                            <h3 class="text-xl font-semibold text-gray-900 mb-2">At41rv Thinking</h3>
-                            <p class="text-gray-600">Using the <strong>deepseek-r1-distill-llama-70b</strong> model, this excels at more complex, creative, and thoughtful tasks like writing essays or in-depth analysis.</p>
+                        <div class="border-2 border-indigo-500 rounded-2xl p-8 flex flex-col text-center shadow-xl transition-transform transform hover:scale-105 relative">
+                            <div class="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">Pro</div>
+                            <h3 class="text-2xl font-semibold text-indigo-600">Pro</h3>
+                            <p class="text-4xl font-bold text-gray-900 my-6">Contact Us</p>
+                            <ul class="space-y-4 text-left text-gray-600 mb-8 flex-grow">
+                                <li class="flex items-center">
+                                    <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <span>All features from the Basic plan</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <span><strong>At41rv Thinking Model:</strong> For complex and creative tasks.</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <svg class="w-6 h-6 text-green-500 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <span>Priority Email Support</span>
+                                </li>
+                            </ul>
+                            <a href="mailto:at41rv@gmail.com" class="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-indigo-700 transition-all">
+                                Get Pro Access
+                            </a>
                         </div>
                     </div>
                 </div>
             </div>
+
 
             <footer class="bg-gray-900 text-white">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -640,6 +655,99 @@
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="subscriptionModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center z-50 transition-opacity duration-300">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 transform transition-all duration-300 scale-95 opacity-0" id="subscriptionModalContent">
+                <div class="p-8">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold text-gray-900">Choose Your Plan</h2>
+                        <p class="text-gray-600 mt-2">Unlock the full potential of At41rv AI.</p>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-8 items-center">
+                        <div class="border border-gray-200 rounded-xl p-6 text-center h-full flex flex-col">
+                            <h3 class="text-2xl font-semibold text-gray-800">Basic</h3>
+                            <p class="text-gray-500 mt-2">Perfect for getting started.</p>
+                            <div class="text-4xl font-bold text-gray-900 my-6">
+                                Free
+                            </div>
+                            <ul class="space-y-4 text-left text-gray-600 mb-8">
+                                <li class="flex items-center">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <span>Access to <strong>At41rv Fast</strong> model</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <span>Standard chat features</span>
+                                </li>
+                                <li class="flex items-center text-gray-400">
+                                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    <span>Access to <strong>At41rv Thinking</strong> model</span>
+                                </li>
+                            </ul>
+                            <button id="continueFree" class="mt-auto w-full bg-gray-200 text-gray-800 py-3 px-4 rounded-lg font-medium hover:bg-gray-300 transition-all">
+                                Continue with Basic
+                            </button>
+                        </div>
+
+                        <div class="border-2 border-indigo-500 rounded-xl p-6 text-center h-full flex flex-col relative">
+                            <div class="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2">
+                                <div class="bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase">Most Popular</div>
+                            </div>
+                            <h3 class="text-2xl font-semibold text-indigo-600">Pro</h3>
+                            <p class="text-gray-500 mt-2">For advanced and creative tasks.</p>
+                            <div class="text-4xl font-bold text-gray-900 my-6">
+                                Contact Us
+                            </div>
+                            <ul class="space-y-4 text-left text-gray-600 mb-8">
+                                <li class="flex items-center">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <span>Access to <strong>At41rv Fast</strong> model</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <span>Access to <strong>At41rv Thinking</strong> model</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <svg class="w-5 h-5 text-green-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <span>Priority support</span>
+                                </li>
+                            </ul>
+                            <div class="text-center bg-indigo-50 border border-indigo-200 rounded-lg p-4 mb-4">
+                                <p class="text-sm text-indigo-700">Payment gateways are coming soon!</p>
+                                <p class="text-sm text-indigo-700">To upgrade to Pro, please contact us at:</p>
+                                <a href="mailto:at41rv@gmail.com" class="font-bold text-indigo-600">at41rv@gmail.com</a>
+                            </div>
+                            <button id="closeSubscriptionModal" class="mt-auto w-full bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-indigo-700 transition-all">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="adminPanelModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center z-50 transition-opacity duration-300">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 p-8 transform transition-all duration-300 scale-95 opacity-0" id="adminPanelContent">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">Admin Panel</h2>
+                    <button id="closeAdminPanel" class="p-2 text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <div>
+                    <h3 class="text-lg font-medium text-gray-800 mb-4">Grant Pro Subscription</h3>
+                    <div class="space-y-4">
+                        <input type="email" id="proUserEmail" placeholder="Enter user's email address" class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 text-base">
+                        <button id="addProUserButton" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-indigo-700 transition-all">
+                            Add Pro User
+                        </button>
+                    </div>
+                    <p id="adminMessage" class="text-center mt-4 text-sm"></p>
                 </div>
             </div>
         </div>
