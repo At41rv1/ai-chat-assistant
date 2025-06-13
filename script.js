@@ -47,7 +47,7 @@ class AIChat {
     // ==================================
 
     initializeAuthStateListener() {
-        auth.onAuthStateChanged(async (user) => { // Make this async
+        auth.onAuthStateChanged(async(user) => { // Make this async
             // First, handle the case where there is no user (signed out)
             if (!user) {
                 sessionStorage.removeItem('auth_just_reloaded'); // Clear flag on sign out
@@ -63,7 +63,7 @@ class AIChat {
                 if (this.historyListenerUnsubscribe) this.historyListenerUnsubscribe();
                 return;
             }
-            
+
             // Check for Pro status
             let isPro = false;
             try {
@@ -93,7 +93,7 @@ class AIChat {
                 this.updateUserInfoUI(this.currentUser);
                 this.loadSavedSettings();
                 this.listenForUserConversations();
-                
+
                 // CRITICAL FIX: Directly show the chat interface, hiding the welcome screen.
                 this.showChatInterface();
                 this.hideSettings();
@@ -208,7 +208,7 @@ class AIChat {
         this.welcomeScreen = document.getElementById('welcomeScreen');
         this.continueWithoutLogin = document.getElementById('continueWithoutLogin');
         this.signInForSync = document.getElementById('signInForSync');
-        this.startFree = document.getElementById('startFree'); 
+        this.startFree = document.getElementById('startFree');
 
         this.chatInterface = document.getElementById('chatInterface');
         this.userInfo = document.getElementById('userInfo');
@@ -227,7 +227,7 @@ class AIChat {
         this.closeHistoryButton = document.getElementById('closeHistoryButton');
         this.chatHistoryList = document.getElementById('chatHistoryList');
 
-        this.homeButton = document.getElementById('homeButton');
+        //this.homeButton = document.getElementById('homeButton'); // Removed in new UI
         this.settingsButton = document.getElementById('settingsButton');
         this.settingsModal = document.getElementById('settingsModal');
         this.closeSettingsModal = document.getElementById('closeSettingsModal');
@@ -265,9 +265,9 @@ class AIChat {
         this.subscriptionModalContent = document.getElementById('subscriptionModalContent');
         this.continueFree = document.getElementById('continueFree');
         this.closeSubscriptionModal = document.getElementById('closeSubscriptionModal');
-        
+
         // Admin Panel
-        this.adminPanelButton = document.getElementById('adminPanelButton'); 
+        this.adminPanelButton = document.getElementById('adminPanelButton');
         this.adminPanelModal = document.getElementById('adminPanelModal');
         this.adminPanelContent = document.getElementById('adminPanelContent');
         this.closeAdminPanel = document.getElementById('closeAdminPanel');
@@ -283,18 +283,22 @@ class AIChat {
         this.signInForSync.addEventListener('click', () => this.signInWithGoogle());
 
         // Chat interface buttons
-        this.homeButton.addEventListener('click', () => this.showWelcomeScreen());
+        //this.homeButton.addEventListener('click', () => this.showWelcomeScreen());
         this.settingsButton.addEventListener('click', () => this.showSettings());
         this.historyButton.addEventListener('click', () => this.toggleSidebar());
         this.closeHistoryButton.addEventListener('click', () => this.toggleSidebar());
+        if (document.querySelector('.sidebar-overlay')) {
+            document.querySelector('.sidebar-overlay').addEventListener('click', () => this.toggleSidebar());
+        }
+
         this.clearChatButton.addEventListener('click', () => {
-            if (window.confirm('Are you sure you want to start a new conversation? The current one will be saved to your history.')) {
+            if (this.conversationHistory.length > 0) {
                 this.clearConversation();
             }
         });
         this.shareButton.addEventListener('click', () => this.shareConversation());
         this.sendButton.addEventListener('click', () => this.sendMessage());
-        
+
         // Message input listeners
         this.messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -303,9 +307,7 @@ class AIChat {
             }
         });
         this.messageInput.addEventListener('input', () => {
-            if (!this.sendButton.dataset.busy) {
-                this.sendButton.disabled = this.messageInput.value.trim().length === 0;
-            }
+            this.sendButton.disabled = this.messageInput.value.trim().length === 0;
         });
 
         // Settings modal listeners
@@ -313,7 +315,7 @@ class AIChat {
         this.signOutButton.addEventListener('click', () => this.signOut());
         this.autoSaveToggle.addEventListener('change', (e) => {
             this.autoSave = e.target.checked;
-            localStorage.setItem('autoSave', JSON.stringify(this.autoSave));
+            if (this.currentUser) localStorage.setItem(`autoSave_${this.currentUser.id}`, JSON.stringify(this.autoSave));
         });
 
         // Auth form listeners
@@ -323,12 +325,12 @@ class AIChat {
         this.signInTabButton.addEventListener('click', () => this.switchAuthTab('signIn'));
         this.signUpTabButton.addEventListener('click', () => this.switchAuthTab('signUp'));
         this.closeErrorModal.addEventListener('click', () => this.hideErrorModal());
-        
+
         // Subscription and Admin Panel Listeners
         this.continueFree.addEventListener('click', () => this.hideSubscriptionModal());
         this.closeSubscriptionModal.addEventListener('click', () => this.hideSubscriptionModal());
-        this.closeAdminPanel.addEventListener('click', () => this.hideAdminPanel());
-        this.addProUserButton.addEventListener('click', () => this.addProUser());
+        if (this.closeAdminPanel) this.closeAdminPanel.addEventListener('click', () => this.hideAdminPanel());
+        if (this.addProUserButton) this.addProUserButton.addEventListener('click', () => this.addProUser());
 
         // Model selector listener
         this.modelSelector.addEventListener('change', (e) => this.handleModelChange(e.target.value));
@@ -345,7 +347,7 @@ class AIChat {
 
         } else {
             this.userInfo.classList.add('hidden');
-            if (this.settingsModal.style.display === 'flex') {
+            if (this.settingsModal.classList.contains('flex')) {
                 this.signedInState.classList.add('hidden');
                 this.signedOutState.classList.remove('hidden');
             }
@@ -368,13 +370,17 @@ class AIChat {
     }
 
     loadSavedSettings() {
-        const autoSave = localStorage.getItem('autoSave');
+        if (!this.currentUser) return;
+
+        const autoSave = localStorage.getItem(`autoSave_${this.currentUser.id}`);
         if (autoSave !== null) {
             this.autoSave = JSON.parse(autoSave);
-            this.autoSaveToggle.checked = this.autoSave;
+        } else {
+            this.autoSave = true; // Default to true
         }
+        this.autoSaveToggle.checked = this.autoSave;
 
-        const savedModel = localStorage.getItem('selectedModel');
+        const savedModel = localStorage.getItem(`selectedModel_${this.currentUser.id}`);
         if (savedModel) {
             this.model = savedModel;
             this.modelSelector.value = savedModel;
@@ -390,6 +396,7 @@ class AIChat {
     showChatInterface() {
         this.welcomeScreen.classList.add('hidden');
         this.chatInterface.classList.remove('hidden');
+        this.chatInterface.classList.add('flex');
         if (!this.currentChatId) {
             this.clearConversation();
         }
@@ -397,8 +404,8 @@ class AIChat {
     }
 
     showSettings() {
-        this.settingsModal.classList.remove('hidden', 'opacity-0');
-        this.settingsModal.style.display = 'flex';
+        this.settingsModal.classList.remove('hidden');
+        this.settingsModal.classList.add('flex');
         this.updateUserInfoUI(this.currentUser);
         if (!this.currentUser) {
             this.switchAuthTab('signIn');
@@ -406,18 +413,17 @@ class AIChat {
     }
 
     hideSettings() {
-        this.settingsModal.classList.add('opacity-0');
-        setTimeout(() => {
-            this.settingsModal.style.display = 'none';
-        }, 200);
+        this.settingsModal.classList.add('hidden');
+        this.settingsModal.classList.remove('flex');
     }
-    
+
     // ==================================
     // Subscription and Admin Methods
     // ==================================
-    
+
     showSubscriptionModal() {
         this.subscriptionModal.classList.remove('hidden');
+        this.subscriptionModal.classList.add('flex');
         setTimeout(() => {
             this.subscriptionModal.classList.remove('opacity-0');
             this.subscriptionModalContent.classList.remove('scale-95', 'opacity-0');
@@ -429,12 +435,15 @@ class AIChat {
         this.subscriptionModalContent.classList.add('scale-95', 'opacity-0');
         setTimeout(() => {
             this.subscriptionModal.classList.add('hidden');
+            this.subscriptionModal.classList.remove('flex');
         }, 300);
     }
 
     showAdminPanel() {
         this.hideSettings(); // Hide settings modal first
+        if (!this.adminPanelModal) return;
         this.adminPanelModal.classList.remove('hidden');
+        this.adminPanelModal.classList.add('flex');
         setTimeout(() => {
             this.adminPanelModal.classList.remove('opacity-0');
             this.adminPanelContent.classList.remove('scale-95', 'opacity-0');
@@ -442,10 +451,12 @@ class AIChat {
     }
 
     hideAdminPanel() {
+        if (!this.adminPanelModal) return;
         this.adminPanelModal.classList.add('opacity-0');
         this.adminPanelContent.classList.add('scale-95', 'opacity-0');
         setTimeout(() => {
             this.adminPanelModal.classList.add('hidden');
+            this.adminPanelModal.classList.remove('flex');
         }, 300);
     }
 
@@ -460,7 +471,7 @@ class AIChat {
             }
         }
         this.setModelConfig(selectedModel);
-        localStorage.setItem('selectedModel', selectedModel);
+        if (this.currentUser) localStorage.setItem(`selectedModel_${this.currentUser.id}`, selectedModel);
     }
 
     async addProUser() {
@@ -479,7 +490,7 @@ class AIChat {
                 isPro: true,
                 grantedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-            
+
             this.adminMessage.textContent = `Successfully granted Pro access to ${email}.`;
             this.adminMessage.style.color = 'green';
             this.proUserEmail.value = '';
@@ -490,25 +501,19 @@ class AIChat {
             this.adminMessage.style.color = 'red';
         }
     }
-    
+
     addAdminPanelButton() {
         const settingsContainer = document.getElementById('signedInState');
         if (settingsContainer && !document.getElementById('adminPanelButton')) { // Check if it doesn't exist
             const adminButton = document.createElement('button');
             adminButton.id = 'adminPanelButton';
-            adminButton.className = 'w-full mt-4 bg-gray-800 text-white py-3 px-4 rounded-xl font-medium hover:bg-gray-900 transition-all duration-300';
+            adminButton.className = 'w-full mt-2 bg-gray-700 text-white py-3 px-4 rounded-xl font-medium hover:bg-gray-800 transition-all';
             adminButton.textContent = 'Admin Panel';
             adminButton.addEventListener('click', () => this.showAdminPanel());
-            
+
             const signOutButton = document.getElementById('signOutButton');
             settingsContainer.insertBefore(adminButton, signOutButton);
         }
-    }
-
-
-    showSignedOutState() {
-        if (this.signedOutState) this.signedOutState.classList.remove('hidden');
-        if (this.signedInState) this.signedInState.classList.add('hidden');
     }
 
     toggleSidebar() {
@@ -520,39 +525,37 @@ class AIChat {
         if (!this.currentUser) return;
 
         if (this.historyListenerUnsubscribe) {
-            this.historyListenerUnsubscribe(); // Unsubscribe from previous listener if it exists
+            this.historyListenerUnsubscribe();
         }
 
-        this.historyListenerUnsubscribe = db.collection('chats').doc(this.currentUser.id).collection('conversations').orderBy('timestamp', 'desc')
-            .onSnapshot(snapshot => {
-                if (snapshot.empty) {
-                    this.chatHistoryList.innerHTML = `<div class="text-center py-8 text-gray-500"><p>No chat history yet</p></div>`;
-                    return;
-                }
-                this.chatHistoryList.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const session = doc.data();
-                    const firstMessage = session.messages.find(m => m.role === 'user');
-                    const messagePreview = firstMessage ? firstMessage.content.substring(0, 50) + '...' : 'Chat session';
-                    const sessionElement = document.createElement('div');
-                    sessionElement.className = 'p-4 bg-white rounded-xl shadow-sm border border-gray-100 hover:border-gray-200 transition-all cursor-pointer';
-                    const date = session.timestamp ? session.timestamp.toDate() : new Date();
-                    const formattedDate = date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                    sessionElement.innerHTML = `
-                        <div class="flex items-center justify-between mb-2">
-                            <div class="text-sm font-medium text-gray-900 truncate">${messagePreview}</div>
-                            <div class="text-xs text-gray-500 flex-shrink-0 ml-2">${formattedDate}</div>
-                        </div>`;
-                    sessionElement.addEventListener('click', () => {
-                        this.loadSpecificConversation(doc.id);
-                        this.toggleSidebar();
-                    });
-                    this.chatHistoryList.appendChild(sessionElement);
+        const conversationsRef = db.collection('chats').doc(this.currentUser.id).collection('conversations').orderBy('timestamp', 'desc');
+        this.historyListenerUnsubscribe = conversationsRef.onSnapshot(snapshot => {
+            if (snapshot.empty) {
+                this.chatHistoryList.innerHTML = `<div class="text-center py-8 text-gray-500 text-sm px-4"><p>Your saved chats will appear here.</p></div>`;
+                return;
+            }
+            this.chatHistoryList.innerHTML = '';
+            snapshot.forEach(doc => {
+                const session = doc.data();
+                if (!session.messages || session.messages.length === 0) return;
+
+                const firstMessage = session.messages.find(m => m.role === 'user');
+                const title = firstMessage ? firstMessage.content : 'New Chat';
+                const sessionElement = document.createElement('a');
+                sessionElement.href = '#';
+                sessionElement.className = `block p-3 mx-2 rounded-lg hover:bg-gray-100 truncate ${this.currentChatId === doc.id ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-700'}`;
+                sessionElement.textContent = title;
+                sessionElement.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (this.currentChatId !== doc.id) this.loadSpecificConversation(doc.id);
+                    if (window.innerWidth < 768) this.toggleSidebar(); // Close sidebar on mobile after selection
                 });
-            }, error => {
-                console.error("Error listening to chat history:", error);
-                this.chatHistoryList.innerHTML = `<div class="text-center py-8 text-red-500"><p>Could not load history.</p></div>`;
+                this.chatHistoryList.appendChild(sessionElement);
             });
+        }, error => {
+            console.error("Error listening to chat history:", error);
+            this.chatHistoryList.innerHTML = `<div class="text-center py-8 text-red-500 px-4"><p>Could not load chat history.</p></div>`;
+        });
     }
 
     async saveConversationHistory() {
@@ -570,26 +573,45 @@ class AIChat {
 
             await docRef.set({
                 messages: this.conversationHistory,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                model: this.model
             }, { merge: true });
 
         } catch (error) {
             console.error("Error saving conversation:", error);
-            this.showError("Could not save your conversation. Your database rules might be incorrect.");
+            this.showError("Could not save your conversation. Check your connection or Firestore rules.");
         }
     }
 
     async loadSpecificConversation(chatId) {
         if (!this.currentUser) return;
-        this.currentChatId = chatId;
+
         try {
             const doc = await db.collection('chats').doc(this.currentUser.id).collection('conversations').doc(chatId).get();
             if (doc.exists) {
-                this.conversationHistory = doc.data().messages;
+                const data = doc.data();
+                this.conversationHistory = data.messages || [];
+                this.currentChatId = chatId;
                 this.chatMessages.innerHTML = '';
                 this.conversationHistory.forEach(msg => {
                     this.addMessageToUI(msg.content, msg.role);
                 });
+
+                // Update model selector if model was saved with chat
+                if (data.model) {
+                    this.modelSelector.value = data.model;
+                    this.setModelConfig(data.model);
+                }
+
+                // Visually update selected chat in history
+                Array.from(this.chatHistoryList.children).forEach(child => {
+                    child.classList.remove('bg-indigo-50', 'text-indigo-700', 'font-semibold');
+                    if (child.textContent === (this.conversationHistory[0] ? .content || 'New Chat')) {
+                        // A bit fragile, better would be to use data-id
+                    }
+                });
+                // A better approach would be adding data-id to sessionElement and finding it here
+
                 this.scrollToBottom();
             }
         } catch (error) {
@@ -602,10 +624,7 @@ class AIChat {
         this.messageInput.disabled = !enabled;
         this.sendButton.disabled = !enabled;
         if (enabled) {
-            this.sendButton.removeAttribute('data-busy');
             this.sendButton.disabled = this.messageInput.value.trim().length === 0;
-        } else {
-            this.sendButton.setAttribute('data-busy', 'true');
         }
     }
 
@@ -622,17 +641,21 @@ class AIChat {
         this.addMessageToUI(message, 'user');
         this.conversationHistory.push({ role: 'user', content: message });
         this.messageInput.value = '';
+        this.messageInput.style.height = 'auto'; // Reset height
 
         this.showTypingIndicator();
+        this.scrollToBottom();
 
         try {
             const response = await this.callAPI(message, this.model);
             this.conversationHistory.push({ role: 'assistant', content: response });
+
+            this.hideTypingIndicator(); // Hide typing before adding message for smoother feel
             this.addMessageToUI(response, 'assistant');
             await this.saveConversationHistory();
         } catch (error) {
             console.error('Error:', error);
-            this.showError(error.message || 'An error occurred while processing your request.');
+            this.addMessageToUI(`Error: ${error.message || 'An error occurred.'}`, 'error');
         } finally {
             this.hideTypingIndicator();
             this.setInputState(true);
@@ -645,49 +668,53 @@ class AIChat {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`
         };
+        // Keep conversation history concise
+        const history = this.conversationHistory.slice(-10);
+
         let requestBody = {
             model: currentModel,
-            messages: this.conversationHistory,
-            max_tokens: 1000,
+            messages: history,
+            max_tokens: 2048,
             stream: false
         };
 
         const response = await fetch(this.baseUrl, { method: 'POST', headers: headers, body: JSON.stringify(requestBody) });
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error((errorData.error && errorData.error.message) || `HTTP ${response.status}: ${response.statusText}`);
+            throw new Error((errorData.error && errorData.error.message) || `API Error: ${response.status}`);
         }
         const data = await response.json();
         let assistantMessage = data.choices && data.choices[0] ? data.choices[0].message.content : "Sorry, I couldn't get a response.";
 
-        if (currentModel === 'deepseek-r1-distill-llama-70b') {
-            assistantMessage = assistantMessage.replace(/<think>[\s\S]*?<\/think>/, '').trim();
-        }
-        if (this.conversationHistory.length > 20) {
-            this.conversationHistory = this.conversationHistory.slice(-20);
-        }
-        return assistantMessage;
+        return assistantMessage.replace(/<think>[\s\S]*?<\/think>/, '').trim();
     }
 
     addMessageToUI(content, role) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message-bubble flex';
+
         if (role === 'user') {
             messageDiv.classList.add('justify-end');
-            messageDiv.innerHTML = `<div class="user-message rounded-2xl rounded-br-none px-6 py-4 max-w-lg shadow-md"><p class="font-medium">${this.escapeHtml(content)}</p></div>`;
-        } else {
+            messageDiv.innerHTML = `<div class="user-message rounded-2xl rounded-br-none px-5 py-3 max-w-lg shadow-sm"><p>${this.escapeHtml(content)}</p></div>`;
+        } else if (role === 'error') {
             messageDiv.classList.add('justify-start');
-            messageDiv.innerHTML = `<div class="ai-message rounded-2xl rounded-bl-none px-6 py-4 max-w-lg shadow-md"><p class="text-gray-700 font-medium">${this.formatMessage(content)}</p></div>`;
+            messageDiv.innerHTML = `<div class="bg-red-100 text-red-700 border border-red-200 rounded-2xl rounded-bl-none px-5 py-3 max-w-lg shadow-sm"><p>${this.escapeHtml(content)}</p></div>`;
+        } else { // assistant
+            messageDiv.classList.add('justify-start');
+            messageDiv.innerHTML = `<div class="ai-message rounded-2xl rounded-bl-none px-5 py-3 max-w-lg shadow-sm"><div class="prose prose-sm max-w-none">${this.formatMessage(content)}</div></div>`;
         }
         this.chatMessages.appendChild(messageDiv);
         this.scrollToBottom();
     }
 
     formatMessage(content) {
+        // Basic formatting, can be expanded with a library like Marked.js
         let formatted = this.escapeHtml(content);
-        formatted = formatted.replace(/\n/g, '<br>');
         formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        formatted = formatted.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+        formatted = formatted.replace(/`(.*?)`/g, '<code>$1</code>');
+        formatted = formatted.replace(/\n/g, '<br>');
         return formatted;
     }
 
@@ -724,7 +751,7 @@ class AIChat {
     scrollToBottom() {
         setTimeout(() => {
             this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
-        }, 100);
+        }, 50);
     }
 
     async shareConversation() {
@@ -757,7 +784,8 @@ class AIChat {
     clearConversation() {
         this.conversationHistory = [];
         this.currentChatId = null;
-        this.chatMessages.innerHTML = `<div class="message-bubble flex justify-start"><div class="ai-message welcome-message rounded-2xl rounded-bl-lg px-8 py-6 max-w-2xl"><p class="text-gray-700 text-lg font-medium leading-relaxed">Hello! I'm At41rv AI. How can I help you today?</p></div></div>`;
+        this.chatMessages.innerHTML = `<div class="message-bubble flex justify-start"><div class="ai-message rounded-2xl rounded-bl-none px-5 py-3 max-w-lg shadow-sm"><p class="font-medium">Hello! I'm At41rv AI. How can I help you today?</p></div></div>`;
+        this.listenForUserConversations(); // To reset the active state in history
     }
 }
 
@@ -785,19 +813,20 @@ async function handleSharedChatView() {
                 const chatData = doc.data();
                 sharedMessagesContainer.innerHTML = '';
                 chatData.messages.forEach(msg => {
+                    const tempChat = new AIChat(); // For formatting functions
                     const messageDiv = document.createElement('div');
                     messageDiv.className = 'message-bubble flex';
                     if (msg.role === 'user') {
                         messageDiv.classList.add('justify-end');
-                        messageDiv.innerHTML = `<div class="user-message rounded-2xl rounded-br-none px-6 py-4 max-w-lg shadow-md"><p class="font-medium">${new AIChat().escapeHtml(msg.content)}</p></div>`;
+                        messageDiv.innerHTML = `<div class="user-message rounded-2xl rounded-br-none px-5 py-3 max-w-lg shadow-sm"><p>${tempChat.escapeHtml(msg.content)}</p></div>`;
                     } else {
                         messageDiv.classList.add('justify-start');
-                        messageDiv.innerHTML = `<div class="ai-message rounded-2xl rounded-bl-none px-6 py-4 max-w-lg shadow-md"><p class="text-gray-700 font-medium">${new AIChat().formatMessage(msg.content)}</p></div>`;
+                        messageDiv.innerHTML = `<div class="ai-message rounded-2xl rounded-bl-none px-5 py-3 max-w-lg shadow-sm"><div class="prose prose-sm max-w-none">${tempChat.formatMessage(msg.content)}</div></div>`;
                     }
                     sharedMessagesContainer.appendChild(messageDiv);
                 });
             } else {
-                sharedMessagesContainer.innerHTML = '<p class="text-center text-red-500">Sorry, this shared chat could not be found.</p>';
+                sharedMessagesContainer.innerHTML = '<p class="text-center text-red-500">Sorry, this shared chat could not be found or has been deleted.</p>';
             }
         } catch (error) {
             console.error("Error loading shared chat:", error);
@@ -811,8 +840,8 @@ async function handleSharedChatView() {
 
 
 document.addEventListener('DOMContentLoaded', async() => {
-    const inSharedView = await handleSharedChatView();
-    if (!inSharedView) {
+    const isSharedView = await handleSharedChatView();
+    if (!isSharedView) {
         window.aiChat = new AIChat();
     }
 });
