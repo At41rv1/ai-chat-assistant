@@ -47,7 +47,7 @@ class AIChat {
     // ==================================
 
     initializeAuthStateListener() {
-        auth.onAuthStateChanged(async(user) => { // Make this async
+        auth.onAuthStateChanged(async (user) => { // Make this async
             // First, handle the case where there is no user (signed out)
             if (!user) {
                 sessionStorage.removeItem('auth_just_reloaded'); // Clear flag on sign out
@@ -63,7 +63,7 @@ class AIChat {
                 if (this.historyListenerUnsubscribe) this.historyListenerUnsubscribe();
                 return;
             }
-
+            
             // Check for Pro status
             let isPro = false;
             try {
@@ -93,8 +93,7 @@ class AIChat {
                 this.updateUserInfoUI(this.currentUser);
                 this.loadSavedSettings();
                 this.listenForUserConversations();
-
-                // CRITICAL FIX: Directly show the chat interface, hiding the welcome screen.
+                
                 this.showChatInterface();
                 this.hideSettings();
 
@@ -208,7 +207,6 @@ class AIChat {
         this.welcomeScreen = document.getElementById('welcomeScreen');
         this.continueWithoutLogin = document.getElementById('continueWithoutLogin');
         this.signInForSync = document.getElementById('signInForSync');
-        this.startFree = document.getElementById('startFree');
 
         this.chatInterface = document.getElementById('chatInterface');
         this.userInfo = document.getElementById('userInfo');
@@ -223,6 +221,7 @@ class AIChat {
         this.clearChatButton = document.getElementById('clearChatButton');
         this.shareButton = document.getElementById('shareButton');
         this.historyButton = document.getElementById('historyButton');
+        this.homeButton = document.getElementById('homeButton'); // New Home Button
         this.chatHistorySidebar = document.getElementById('chatHistorySidebar');
         this.closeHistoryButton = document.getElementById('closeHistoryButton');
         this.chatHistoryList = document.getElementById('chatHistoryList');
@@ -265,9 +264,9 @@ class AIChat {
         this.subscriptionModalContent = document.getElementById('subscriptionModalContent');
         this.continueFree = document.getElementById('continueFree');
         this.closeSubscriptionModal = document.getElementById('closeSubscriptionModal');
-
+        
         // Admin Panel
-        this.adminPanelButton = document.getElementById('adminPanelButton');
+        this.adminPanelButton = document.getElementById('adminPanelButton'); 
         this.adminPanelModal = document.getElementById('adminPanelModal');
         this.adminPanelContent = document.getElementById('adminPanelContent');
         this.closeAdminPanel = document.getElementById('closeAdminPanel');
@@ -279,10 +278,10 @@ class AIChat {
     attachEventListeners() {
         // Landing page buttons
         this.continueWithoutLogin.addEventListener('click', () => this.showChatInterface());
-        this.startFree.addEventListener('click', () => this.showChatInterface());
         this.signInForSync.addEventListener('click', () => this.signInWithGoogle());
 
         // Chat interface buttons
+        this.homeButton.addEventListener('click', () => this.showWelcomeScreen());
         this.settingsButton.addEventListener('click', () => this.showSettings());
         this.historyButton.addEventListener('click', () => this.toggleSidebar());
         this.closeHistoryButton.addEventListener('click', () => this.toggleSidebar());
@@ -293,7 +292,7 @@ class AIChat {
         });
         this.shareButton.addEventListener('click', () => this.shareConversation());
         this.sendButton.addEventListener('click', () => this.sendMessage());
-
+        
         // Message input listeners
         this.messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -322,7 +321,7 @@ class AIChat {
         this.signInTabButton.addEventListener('click', () => this.switchAuthTab('signIn'));
         this.signUpTabButton.addEventListener('click', () => this.switchAuthTab('signUp'));
         this.closeErrorModal.addEventListener('click', () => this.hideErrorModal());
-
+        
         // Subscription and Admin Panel Listeners
         this.continueFree.addEventListener('click', () => this.hideSubscriptionModal());
         this.closeSubscriptionModal.addEventListener('click', () => this.hideSubscriptionModal());
@@ -410,11 +409,11 @@ class AIChat {
             this.settingsModal.style.display = 'none';
         }, 200);
     }
-
+    
     // ==================================
     // Subscription and Admin Methods
     // ==================================
-
+    
     showSubscriptionModal() {
         this.subscriptionModal.classList.remove('hidden');
         setTimeout(() => {
@@ -478,7 +477,7 @@ class AIChat {
                 isPro: true,
                 grantedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-
+            
             this.adminMessage.textContent = `Successfully granted Pro access to ${email}.`;
             this.adminMessage.style.color = 'green';
             this.proUserEmail.value = '';
@@ -489,7 +488,7 @@ class AIChat {
             this.adminMessage.style.color = 'red';
         }
     }
-
+    
     addAdminPanelButton() {
         const settingsContainer = document.getElementById('signedInState');
         if (settingsContainer && !document.getElementById('adminPanelButton')) { // Check if it doesn't exist
@@ -498,7 +497,7 @@ class AIChat {
             adminButton.className = 'w-full mt-4 bg-gray-800 text-white py-3 px-4 rounded-xl font-medium hover:bg-gray-900 transition-all duration-300';
             adminButton.textContent = 'Admin Panel';
             adminButton.addEventListener('click', () => this.showAdminPanel());
-
+            
             const signOutButton = document.getElementById('signOutButton');
             settingsContainer.insertBefore(adminButton, signOutButton);
         }
