@@ -283,6 +283,27 @@
             background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
             animation: shimmer 3s infinite;
         }
+        
+        .auth-tab {
+            flex: 1;
+            text-align: center;
+            cursor: pointer;
+            padding: 0.75rem 1rem;
+            border-bottom: 3px solid transparent;
+            color: #6b7280;
+            transition: all 0.2s;
+        }
+        
+        .auth-tab.active {
+            border-bottom-color: #4f46e5;
+            color: #4f46e5;
+            font-weight: 600;
+        }
+        
+        .auth-button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 
@@ -457,6 +478,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             </svg>
                         </button>
+                        <button id="shareButton" class="nav-button px-4 py-2 text-sm font-medium">Share</button>
                         <button id="clearChatButton" class="nav-button px-4 py-2 text-sm font-medium">
                             Clear Chat
                         </button>
@@ -526,100 +548,83 @@
                 </div>
 
                 <div id="settingsModal" class="fixed inset-0 error-modal-bg hidden items-center justify-center z-50 transition-all duration-200 opacity-0">
-                    <div class="error-modal-content rounded-3xl p-8 max-w-lg mx-4 w-full">
+                    <div class="error-modal-content rounded-3xl p-8 max-w-md mx-4 w-full">
                         <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-2xl font-bold text-gray-800">Settings</h3>
+                            <h3 class="text-2xl font-bold text-gray-800">Account & Settings</h3>
                             <button id="closeSettingsModal" class="p-2 text-gray-500 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-all">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
                         </div>
 
-                        <div class="space-y-6">
-                            <div class="border-b border-gray-200 pb-6">
-                                <h4 class="text-lg font-semibold text-gray-800 mb-4">Account</h4>
-                                <div id="accountSection">
-                                    <div id="signedOutState" class="space-y-4">
-                                        <p class="text-gray-600 text-sm">Sign in to sync your conversations across devices and access advanced features.</p>
-
-                                        <div id="g_id_onload" data-client_id="465923208288-hb4182d5ro58k30pkshh4knu3i62bvrh.apps.googleusercontent.com" data-context="signin" data-ux_mode="popup" data-callback="handleCredentialResponse" data-auto_prompt="false">
-                                        </div>
-                                       <div id="signedOutState" class="space-y-4">
-                                     <p class="text-gray-600 text-sm">Sign in to sync your conversations...</p>
-                                <div class="g_id_signin" ...></div>
-
-                                   <div class="relative flex items-center justify-center my-4">
-                             <div class="w-full border-t border-gray-300"></div>
-                            <div class="relative px-2 bg-white text-gray-500 text-sm">Or</div>
-                  </div>
-
-    <div id="emailSignInForm" class="space-y-3">
-        <input type="email" id="emailForSignIn" placeholder="Enter your email" class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 text-base">
-        <button id="sendSignInLinkButton" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-indigo-700 transition-all">
-            Send Sign-In Link
-        </button>
-        <p id="emailLinkMessage" class="text-sm text-center text-green-600 hidden"></p>
-    </div>
-    </div>
-
-                                        <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline" data-text="signin_with" data-size="large" data-logo_alignment="left">
-                                        </div>
-                                    </div>
-
-                                    <div id="signedInState" class="space-y-4 hidden">
-                                        <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl">
-                                            <img id="settingsUserAvatar" src="" alt="User Avatar" class="w-12 h-12 rounded-full">
-                                            <div class="flex-1">
-                                                <div id="settingsUserName" class="font-semibold text-gray-800"></div>
-                                                <div id="settingsUserEmail" class="text-sm text-gray-600"></div>
-                                            </div>
-                                        </div>
-                                        <button id="signOutButton" class="w-full bg-red-50 text-red-600 py-3 px-4 rounded-xl font-medium hover:bg-red-100 transition-all duration-300">
-                                Sign Out
-                            </button>
+                        <div id="accountSection">
+                            <div id="signedInState" class="space-y-6 hidden">
+                                <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-xl border">
+                                    <img id="settingsUserAvatar" src="" alt="User Avatar" class="w-12 h-12 rounded-full">
+                                    <div class="flex-1">
+                                        <div id="settingsUserName" class="font-semibold text-gray-800"></div>
+                                        <div id="settingsUserEmail" class="text-sm text-gray-600"></div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="border-b border-gray-200 pb-6">
-                                <h4 class="text-lg font-semibold text-gray-800 mb-4">Chat Settings</h4>
-                                <div class="space-y-4">
+                                <div class="border-t pt-6 space-y-4">
                                     <div class="flex items-center justify-between">
                                         <div>
                                             <div class="font-medium text-gray-800">Auto-save conversations</div>
-                                            <div class="text-sm text-gray-600">Automatically save chats to your Google account</div>
+                                            <div class="text-sm text-gray-600">Automatically save chats to your account</div>
                                         </div>
                                         <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="autoSaveToggle" class="sr-only peer" checked>
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                            </label>
+                                            <input type="checkbox" id="autoSaveToggle" class="sr-only peer" checked>
+                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                        </label>
                                     </div>
                                 </div>
+                                <button id="signOutButton" class="w-full bg-red-50 text-red-600 py-3 px-4 rounded-xl font-medium hover:bg-red-100 transition-all duration-300">
+                                    Sign Out
+                                </button>
                             </div>
 
-                            <div>
-                                <h4 class="text-lg font-semibold text-gray-800 mb-4">Support</h4>
-                                <div class="space-y-3">
-                                    <a href="mailto:at41rv@gmail.com" class="flex items-center space-x-3 p-3 rounded-xl hover:bg-gray-50 transition-all">
-                                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                            </svg>
-                                        <div>
-                                            <div class="font-medium text-gray-800">Contact Support</div>
-                                            <div class="text-sm text-gray-600">at41rv@gmail.com</div>
-                                        </div>
-                                    </a>
-                                    <div class="text-xs text-gray-500 p-3 bg-gray-50 rounded-xl">
-                                        <p><strong>Version:</strong> 1.0</p>
-                                        <p><strong>Last Update:</strong> Today </p>
-                                        <p><strong>Privacy:</strong> Your conversations are secure and private</p>
+                            <div id="signedOutState" class="hidden">
+                                <div class="flex border-b border-gray-200 mb-6">
+                                    <div id="signInTabButton" class="auth-tab active">Sign In</div>
+                                    <div id="signUpTabButton" class="auth-tab">Sign Up</div>
+                                </div>
+
+                                <p id="authError" class="text-red-500 text-sm mb-4 text-center h-5"></p>
+
+                                <div id="signInForm" class="space-y-4">
+                                    <input type="email" id="signInEmail" placeholder="Email Address" class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 text-base">
+                                    <input type="password" id="signInPassword" placeholder="Password" class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 text-base">
+                                    <button id="signInButton" class="auth-button w-full bg-indigo-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-indigo-700 transition-all">
+                                        Sign In
+                                    </button>
+                                    <div class="relative flex items-center justify-center my-2">
+                                        <div class="w-full border-t border-gray-300"></div>
+                                        <div class="relative -top-3 px-2 bg-white text-gray-500 text-sm">Or</div>
                                     </div>
+                                    <button id="googleSignInButton" class="auth-button w-full flex items-center justify-center px-8 py-3 border border-gray-300 text-base font-medium rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-all duration-300">
+                                        <svg class="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                                        </svg>
+                                        Sign in with Google
+                                    </button>
+                                </div>
+
+                                <div id="signUpForm" class="hidden space-y-4">
+                                    <input type="email" id="signUpEmail" placeholder="Email Address" class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 text-base">
+                                    <input type="password" id="signUpPassword" placeholder="Choose a Password" class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 text-base">
+                                    <button id="signUpButton" class="auth-button w-full bg-indigo-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-indigo-700 transition-all">
+                                        Create Account
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
 
                 <div id="errorModal" class="fixed inset-0 error-modal-bg hidden items-center justify-center z-50">
                     <div class="error-modal-content rounded-3xl p-8 max-w-md mx-4">
@@ -632,7 +637,7 @@
                 </div>
 
                 <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://api.a4f.co; 
-                    script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://accounts.google.com/gsi/client; 
+                    script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://accounts.google.com/gsi/client https://www.gstatic.com; 
                     style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; 
                     img-src 'self' data: https:; 
                     font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com https://generativelanguage.googleapis.com;">
@@ -644,13 +649,6 @@
                 <script>
                     (function() {
                         'use strict';
-
-                        // Disable console in production
-                        if (window.location.hostname !== 'localhost') {
-                            console.log = console.error = console.info = console.debug = console.warn = function() {};
-                        }
-
-                        // Prevent common attack vectors
                         window.addEventListener('contextmenu', e => e.preventDefault());
                         window.addEventListener('keydown', e => {
                             if ((e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J')) ||
@@ -659,9 +657,7 @@
                             }
                         });
 
-                        // Additional security measures
                         document.addEventListener('DOMContentLoaded', () => {
-                            // Prevent form submissions if not using HTTPS
                             if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
                                 document.querySelectorAll('form').forEach(form => {
                                     form.addEventListener('submit', e => {
@@ -676,8 +672,10 @@
 
                 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
                 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+                <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-       <script src="script.js"></script>
+                <script src="script.js"></script>
 
 </body>
+
 </html>
