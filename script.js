@@ -6,7 +6,7 @@ const firebaseConfig = {
     authDomain: "at41rvai-1abf9.firebaseapp.com",
     projectId: "at41rvai-1abf9",
     storageBucket: "at41rvai-1abf9.appspot.com",
-    messagingSenderId: "127944898254", // From your project details
+    messagingSenderId: "127944898254",
     appId: "ADD_YOUR_APP_ID_HERE" // Recommended: Get from Firebase Console
 };
 
@@ -21,9 +21,11 @@ try {
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// =================================================================
+// 2. MAIN APP CLASS
+// =================================================================
 class AIChat {
     constructor() {
-        // ... (rest of constructor is the same)
         this.apiKey = '';
         this.baseUrl = '';
         this.model = 'llama-3.1-8b-instant';
@@ -32,6 +34,7 @@ class AIChat {
         this.currentUser = null;
         this.autoSave = true;
         this.isSidebarOpen = false;
+        this.historyListenerUnsubscribe = null;
 
         this.initializeElements();
         this.attachEventListeners();
@@ -39,40 +42,55 @@ class AIChat {
         this.setModelConfig(this.model);
     }
 
-    setModelConfig(modelName) {
-        if (modelName === 'llama-3.1-8b-instant') {
-            this.apiKey = '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';
-            this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
-        } else if (modelName === 'deepseek-r1-distill-llama-70b') {
-            this.apiKey = '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';
-            this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
-        }
-        this.model = modelName;
-    }
-
-    // =================================================================
-    // 2. FIREBASE AUTHENTICATION
-    // =================================================================
+    // ==================================
+    // 2a. FIREBASE AUTHENTICATION
+    // ==================================
 
     initializeAuthStateListener() {
         auth.onAuthStateChanged(user => {
-            if (user) {
+            // First, handle the case where there is no user (signed out)
+            if (!user) {
+                sessionStorage.removeItem('auth_just_reloaded'); // Clear flag on sign out
+                this.currentUser = null;
+                this.updateUserInfoUI(null);
+
+                // Only show welcome screen if not viewing a shared chat
+                const params = new URLSearchParams(window.location.search);
+                if (!params.has('share')) {
+                    this.showWelcomeScreen();
+                }
+
+                if (this.historyListenerUnsubscribe) this.historyListenerUnsubscribe();
+                return;
+            }
+
+            // If there IS a user, check for our reload flag
+            if (sessionStorage.getItem('auth_just_reloaded')) {
+                // This is the execution AFTER the reload.
+                // The flag is present, so we can proceed to show the chat interface.
+                sessionStorage.removeItem('auth_just_reloaded'); // Clear the flag now that we've used it
+
+                // Set up the user object and UI
                 const userData = {
                     id: user.uid,
                     name: user.displayName || user.email.split('@')[0],
                     email: user.email,
-                    picture: user.photoURL || `https://ui-avatars.com/api/?name=${user.email.split('@')[0]}&background=random`,
+                    picture: user.photoURL || `https://ui-avatars.com/api/?name=${user.email.charAt(0).toUpperCase()}&background=random&color=fff&size=128`,
                 };
                 this.currentUser = userData;
                 this.updateUserInfoUI(this.currentUser);
                 this.loadSavedSettings();
+                this.listenForUserConversations();
+
+                // CRITICAL FIX: Directly show the chat interface, hiding the welcome screen.
                 this.showChatInterface();
                 this.hideSettings();
+
             } else {
-                this.currentUser = null;
-                this.updateUserInfoUI(null);
-                this.showSignedOutState();
-                this.showWelcomeScreen();
+                // This is the first execution right after a login/signup action.
+                // The flag is NOT present, so we set it and trigger the one-time reload.
+                sessionStorage.setItem('auth_just_reloaded', 'true');
+                window.location.reload();
             }
         });
     }
@@ -84,16 +102,15 @@ class AIChat {
                 button.disabled = isLoading;
                 if (isLoading) {
                     button.dataset.originalText = button.innerHTML;
-                    button.innerHTML = `<svg class="animate-spin h-5 w-5 mx-auto text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
-                    // For Google button, keep the text
-                    if (button.id === 'googleSignInButton') {
-                        button.innerHTML = button.dataset.originalText;
-                        button.classList.add('opacity-50', 'cursor-not-allowed');
+                    if (button.id !== 'googleSignInButton') {
+                        button.innerHTML = `<svg class="animate-spin h-5 w-5 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+                    } else {
+                        button.classList.add('opacity-50');
                     }
                 } else {
                     button.innerHTML = button.dataset.originalText || button.innerHTML;
                     if (button.id === 'googleSignInButton') {
-                        button.classList.remove('opacity-50', 'cursor-not-allowed');
+                        button.classList.remove('opacity-50');
                     }
                 }
             }
@@ -146,35 +163,36 @@ class AIChat {
     }
 
     signOut() {
+        if (this.historyListenerUnsubscribe) {
+            this.historyListenerUnsubscribe();
+            this.historyListenerUnsubscribe = null;
+        }
         auth.signOut().catch((error) => {
             console.error('Sign out error', error);
         });
     }
 
-    // ... (rest of the script is the same as the previous version)
-
-    updateUserInfoUI(user) {
-        if (user) {
-            this.userInfo.classList.remove('hidden');
-            this.userAvatar.src = user.picture;
-            this.userName.textContent = user.name;
-            this.userEmail.textContent = user.email;
-        } else {
-            this.userInfo.classList.add('hidden');
+    // ... (rest of the class methods remain the same as the previous version)
+    setModelConfig(modelName) {
+        if (modelName === 'llama-3.1-8b-instant') {
+            this.apiKey = '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';
+            this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
+        } else if (modelName === 'deepseek-r1-distill-llama-70b') {
+            this.apiKey = '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';
+            this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
         }
+        this.model = modelName;
     }
 
-    // =================================================================
-    // 3. UI and APP LOGIC
-    // =================================================================
-
     initializeElements() {
-        // Welcome Screen
+        this.appContainer = document.getElementById('appContainer');
+        this.sharedChatView = document.getElementById('sharedChatView');
+        this.sharedChatMessages = document.getElementById('sharedChatMessages');
+
         this.welcomeScreen = document.getElementById('welcomeScreen');
         this.continueWithoutLogin = document.getElementById('continueWithoutLogin');
         this.signInForSync = document.getElementById('signInForSync');
 
-        // Main Chat UI
         this.chatInterface = document.getElementById('chatInterface');
         this.userInfo = document.getElementById('userInfo');
         this.userAvatar = document.getElementById('userAvatar');
@@ -190,15 +208,15 @@ class AIChat {
         this.historyButton = document.getElementById('historyButton');
         this.chatHistorySidebar = document.getElementById('chatHistorySidebar');
         this.closeHistoryButton = document.getElementById('closeHistoryButton');
+        this.chatHistoryList = document.getElementById('chatHistoryList');
 
-        // Settings & Auth Modal
+
         this.settingsButton = document.getElementById('settingsButton');
         this.settingsModal = document.getElementById('settingsModal');
         this.closeSettingsModal = document.getElementById('closeSettingsModal');
         this.autoSaveToggle = document.getElementById('autoSaveToggle');
         this.signOutButton = document.getElementById('signOutButton');
 
-        // Auth Forms
         this.signedInState = document.getElementById('signedInState');
         this.signedOutState = document.getElementById('signedOutState');
         this.authError = document.getElementById('authError');
@@ -217,29 +235,27 @@ class AIChat {
         this.signUpPassword = document.getElementById('signUpPassword');
         this.signUpButton = document.getElementById('signUpButton');
 
-        // Error Modal
+        this.settingsUserAvatar = document.getElementById('settingsUserAvatar');
+        this.settingsUserName = document.getElementById('settingsUserName');
+        this.settingsUserEmail = document.getElementById('settingsUserEmail');
+
         this.errorModal = document.getElementById('errorModal');
         this.errorMessage = document.getElementById('errorMessage');
         this.closeErrorModal = document.getElementById('closeErrorModal');
     }
 
     attachEventListeners() {
-        // Welcome Screen Buttons
         this.continueWithoutLogin.addEventListener('click', () => this.showChatInterface());
         this.signInForSync.addEventListener('click', () => this.showSettings());
-
-        // Main UI Buttons
         this.settingsButton.addEventListener('click', () => this.showSettings());
         this.historyButton.addEventListener('click', () => this.toggleSidebar());
         this.closeHistoryButton.addEventListener('click', () => this.toggleSidebar());
         this.clearChatButton.addEventListener('click', () => {
-            if (window.confirm('Are you sure you want to clear the conversation?')) {
+            if (window.confirm('Are you sure you want to start a new conversation? The current one will be saved to your history.')) {
                 this.clearConversation();
             }
         });
         this.shareButton.addEventListener('click', () => this.shareConversation());
-
-        // Chat Input
         this.sendButton.addEventListener('click', () => this.sendMessage());
         this.messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -248,10 +264,11 @@ class AIChat {
             }
         });
         this.messageInput.addEventListener('input', () => {
-            this.sendButton.disabled = this.messageInput.value.trim().length === 0;
+            if (!this.sendButton.dataset.busy) {
+                this.sendButton.disabled = this.messageInput.value.trim().length === 0;
+            }
         });
 
-        // Settings and Auth Modal Listeners
         this.closeSettingsModal.addEventListener('click', () => this.hideSettings());
         this.signOutButton.addEventListener('click', () => this.signOut());
         this.autoSaveToggle.addEventListener('change', (e) => {
@@ -259,20 +276,34 @@ class AIChat {
             localStorage.setItem('autoSave', JSON.stringify(this.autoSave));
         });
 
-        // Auth Form Listeners
         this.googleSignInButton.addEventListener('click', () => this.signInWithGoogle());
         this.signInButton.addEventListener('click', () => this.signInWithEmail());
         this.signUpButton.addEventListener('click', () => this.signUpWithEmail());
-
         this.signInTabButton.addEventListener('click', () => this.switchAuthTab('signIn'));
         this.signUpTabButton.addEventListener('click', () => this.switchAuthTab('signUp'));
-
-        // Generic Modal Listeners
         this.closeErrorModal.addEventListener('click', () => this.hideErrorModal());
     }
 
+    updateUserInfoUI(user) {
+        if (user) {
+            [this.userInfo, this.signedInState].forEach(el => el.classList.remove('hidden'));
+            this.signedOutState.classList.add('hidden');
+
+            [this.userAvatar, this.settingsUserAvatar].forEach(el => el.src = user.picture);
+            [this.userName, this.settingsUserName].forEach(el => el.textContent = user.name);
+            [this.userEmail, this.settingsUserEmail].forEach(el => el.textContent = user.email);
+
+        } else {
+            this.userInfo.classList.add('hidden');
+            if (this.settingsModal.style.display === 'flex') {
+                this.signedInState.classList.add('hidden');
+                this.signedOutState.classList.remove('hidden');
+            }
+        }
+    }
+
     switchAuthTab(tab) {
-        this.authError.textContent = ''; // Clear errors on tab switch
+        this.authError.textContent = '';
         if (tab === 'signIn') {
             this.signInTabButton.classList.add('active');
             this.signUpTabButton.classList.remove('active');
@@ -299,10 +330,6 @@ class AIChat {
             this.modelSelector.value = savedModel;
             this.setModelConfig(savedModel);
         }
-
-        if (this.currentUser && this.autoSave) {
-            this.loadAllUserConversations();
-        }
     }
 
     showWelcomeScreen() {
@@ -313,7 +340,7 @@ class AIChat {
     showChatInterface() {
         this.welcomeScreen.classList.add('hidden');
         this.chatInterface.classList.remove('hidden');
-        if (this.conversationHistory.length === 0) {
+        if (!this.currentChatId) {
             this.clearConversation();
         }
         this.messageInput.focus();
@@ -322,20 +349,16 @@ class AIChat {
     showSettings() {
         this.settingsModal.classList.remove('hidden', 'opacity-0');
         this.settingsModal.style.display = 'flex';
-        if (this.currentUser) {
-            this.signedInState.classList.remove('hidden');
-            this.signedOutState.classList.add('hidden');
-        } else {
-            this.signedInState.classList.add('hidden');
-            this.signedOutState.classList.remove('hidden');
-            this.switchAuthTab('signIn'); // Default to sign-in tab
+        this.updateUserInfoUI(this.currentUser);
+        if (!this.currentUser) {
+            this.switchAuthTab('signIn');
         }
     }
 
     hideSettings() {
         this.settingsModal.classList.add('opacity-0');
         setTimeout(() => {
-            this.settingsModal.classList.add('hidden');
+            this.settingsModal.style.display = 'none';
         }, 200);
     }
 
@@ -347,75 +370,69 @@ class AIChat {
     toggleSidebar() {
         this.isSidebarOpen = !this.isSidebarOpen;
         this.chatHistorySidebar.classList.toggle('active');
-        if (this.isSidebarOpen && this.currentUser) {
-            this.loadAllUserConversations();
-        }
     }
 
-    async loadAllUserConversations() {
-        const chatHistoryList = document.getElementById('chatHistoryList');
-        if (!chatHistoryList || !this.currentUser) return;
+    listenForUserConversations() {
+        if (!this.currentUser) return;
 
-        chatHistoryList.innerHTML = '<div class="text-center py-8 text-gray-500"><p>Loading history...</p></div>';
-
-        try {
-            const snapshot = await db.collection('chats').doc(this.currentUser.id).collection('conversations').orderBy('timestamp', 'desc').get();
-
-            if (snapshot.empty) {
-                chatHistoryList.innerHTML = `<div class="text-center py-8 text-gray-500"><p>No chat history yet</p></div>`;
-                return;
-            }
-
-            chatHistoryList.innerHTML = '';
-            snapshot.forEach(doc => {
-                const session = doc.data();
-                const firstMessage = session.messages.find(m => m.role === 'user');
-                const messagePreview = firstMessage ? firstMessage.content.substring(0, 50) + '...' : 'Chat session';
-
-                const sessionElement = document.createElement('div');
-                sessionElement.className = 'p-4 bg-white rounded-xl shadow-sm border border-gray-100 hover:border-gray-200 transition-all cursor-pointer';
-
-                const date = session.timestamp ? session.timestamp.toDate() : new Date();
-                const formattedDate = date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-                sessionElement.innerHTML = `
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="text-sm font-medium text-gray-900 truncate">${messagePreview}</div>
-                        <div class="text-xs text-gray-500 flex-shrink-0 ml-2">${formattedDate}</div>
-                    </div>`;
-
-                sessionElement.addEventListener('click', () => {
-                    this.loadSpecificConversation(doc.id);
-                    this.toggleSidebar();
+        this.historyListenerUnsubscribe = db.collection('chats').doc(this.currentUser.id).collection('conversations').orderBy('timestamp', 'desc')
+            .onSnapshot(snapshot => {
+                if (snapshot.empty) {
+                    this.chatHistoryList.innerHTML = `<div class="text-center py-8 text-gray-500"><p>No chat history yet</p></div>`;
+                    return;
+                }
+                this.chatHistoryList.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const session = doc.data();
+                    const firstMessage = session.messages.find(m => m.role === 'user');
+                    const messagePreview = firstMessage ? firstMessage.content.substring(0, 50) + '...' : 'Chat session';
+                    const sessionElement = document.createElement('div');
+                    sessionElement.className = 'p-4 bg-white rounded-xl shadow-sm border border-gray-100 hover:border-gray-200 transition-all cursor-pointer';
+                    const date = session.timestamp ? session.timestamp.toDate() : new Date();
+                    const formattedDate = date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    sessionElement.innerHTML = `
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="text-sm font-medium text-gray-900 truncate">${messagePreview}</div>
+                            <div class="text-xs text-gray-500 flex-shrink-0 ml-2">${formattedDate}</div>
+                        </div>`;
+                    sessionElement.addEventListener('click', () => {
+                        this.loadSpecificConversation(doc.id);
+                        this.toggleSidebar();
+                    });
+                    this.chatHistoryList.appendChild(sessionElement);
                 });
-                chatHistoryList.appendChild(sessionElement);
+            }, error => {
+                console.error("Error listening to chat history:", error);
+                this.chatHistoryList.innerHTML = `<div class="text-center py-8 text-red-500"><p>Could not load history.</p></div>`;
             });
-        } catch (error) {
-            console.error("Error loading chat history:", error);
-            chatHistoryList.innerHTML = `<div class="text-center py-8 text-red-500"><p>Could not load history.</p></div>`;
-        }
     }
-
 
     async saveConversationHistory() {
-        if (this.currentUser && this.autoSave && this.conversationHistory.length > 0) {
-            try {
-                if (!this.currentChatId) {
-                    const newChatRef = db.collection('chats').doc(this.currentUser.id).collection('conversations').doc();
-                    this.currentChatId = newChatRef.id;
-                }
-                await db.collection('chats').doc(this.currentUser.id).collection('conversations').doc(this.currentChatId).set({
-                    messages: this.conversationHistory,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
-            } catch (error) {
-                console.error("Error saving conversation:", error);
-                this.showError("Could not save your conversation.");
+        if (!this.currentUser || !this.autoSave || this.conversationHistory.length === 0) {
+            return;
+        }
+        try {
+            const docRef = this.currentChatId ?
+                db.collection('chats').doc(this.currentUser.id).collection('conversations').doc(this.currentChatId) :
+                db.collection('chats').doc(this.currentUser.id).collection('conversations').doc();
+
+            if (!this.currentChatId) {
+                this.currentChatId = docRef.id;
             }
+
+            await docRef.set({
+                messages: this.conversationHistory,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
+        } catch (error) {
+            console.error("Error saving conversation:", error);
+            this.showError("Could not save your conversation. Your database rules might be incorrect.");
         }
     }
 
     async loadSpecificConversation(chatId) {
+        if (!this.currentUser) return;
         this.currentChatId = chatId;
         try {
             const doc = await db.collection('chats').doc(this.currentUser.id).collection('conversations').doc(chatId).get();
@@ -423,7 +440,7 @@ class AIChat {
                 this.conversationHistory = doc.data().messages;
                 this.chatMessages.innerHTML = '';
                 this.conversationHistory.forEach(msg => {
-                    this.addMessage(msg.content, msg.role);
+                    this.addMessageToUI(msg.content, msg.role);
                 });
                 this.scrollToBottom();
             }
@@ -433,59 +450,38 @@ class AIChat {
         }
     }
 
-    checkForLiveSearchIntent(message) {
-        const keywords = ['weather', 'news', 'latest', 'date', 'time', 'temperature', 'forecast', 'current events', 'stock price'];
-        const lowerCaseMessage = message.toLowerCase();
-        return keywords.some(keyword => lowerCaseMessage.includes(keyword));
+    setInputState(enabled) {
+        this.messageInput.disabled = !enabled;
+        this.sendButton.disabled = !enabled;
+        if (enabled) {
+            this.sendButton.removeAttribute('data-busy');
+            this.sendButton.disabled = this.messageInput.value.trim().length === 0;
+        } else {
+            this.sendButton.setAttribute('data-busy', 'true');
+        }
     }
 
     async sendMessage() {
         const message = this.messageInput.value.trim();
         if (!message) return;
 
-        this.addMessage(message, 'user');
-        this.conversationHistory.push({ role: 'user', content: message });
         this.setInputState(false);
-        this.messageInput.value = '';
-        this.sendButton.disabled = true;
 
-        const lowerCaseMessage = message.toLowerCase();
-        const modelKeywords = ['which model', 'what model', 'your model', 'model name', 'who are you', 'what are you', 'tell me about yourself', 'are you a model', 'model'];
-
-        if (modelKeywords.some(keyword => lowerCaseMessage.includes(keyword))) {
-            const responses = ["At41rv AI is very best LLM Model by Atharv", "see your's face then ask about me - at41rv"];
-            const response = responses[Math.floor(Math.random() * responses.length)];
-            this.addMessage(response, 'assistant');
-            this.conversationHistory.push({ role: 'assistant', content: response });
-            this.setInputState(true);
-            this.focusInput();
-            this.saveConversationHistory();
-            return;
+        if (this.conversationHistory.length === 0) {
+            this.chatMessages.innerHTML = '';
         }
+
+        this.addMessageToUI(message, 'user');
+        this.conversationHistory.push({ role: 'user', content: message });
+        this.messageInput.value = '';
 
         this.showTypingIndicator();
 
         try {
-            if (this.checkForLiveSearchIntent(message)) {
-                const originalModel = this.model;
-                this.setModelConfig('XenAI/gpt-4o-search-preview');
-                this.baseUrl = 'https://samuraiapi.in/v1/chat/completions';
-                this.apiKey = '78632757386';
-
-                const searchResponse = await this.callAPI(message, 'XenAI/gpt-4o-search-preview');
-
-                this.setModelConfig(originalModel);
-
-                if (searchResponse.trim() !== '') {
-                    this.addMessage(searchResponse, 'assistant');
-                    this.conversationHistory.push({ role: 'assistant', content: searchResponse });
-                }
-            } else {
-                const mainResponse = await this.callAPI(message, this.model);
-                this.addMessage(mainResponse, 'assistant');
-                this.conversationHistory.push({ role: 'assistant', content: mainResponse });
-            }
-            this.saveConversationHistory();
+            const response = await this.callAPI(message, this.model);
+            this.conversationHistory.push({ role: 'assistant', content: response });
+            this.addMessageToUI(response, 'assistant');
+            await this.saveConversationHistory();
         } catch (error) {
             console.error('Error:', error);
             this.showError(error.message || 'An error occurred while processing your request.');
@@ -514,10 +510,8 @@ class AIChat {
             throw new Error((errorData.error && errorData.error.message) || `HTTP ${response.status}: ${response.statusText}`);
         }
         const data = await response.json();
-        let assistantMessage = '';
-        if (data.choices && data.choices[0] && data.choices[0].message) {
-            assistantMessage = data.choices[0].message.content;
-        }
+        let assistantMessage = data.choices && data.choices[0] ? data.choices[0].message.content : "Sorry, I couldn't get a response.";
+
         if (currentModel === 'deepseek-r1-distill-llama-70b') {
             assistantMessage = assistantMessage.replace(/<think>[\s\S]*?<\/think>/, '').trim();
         }
@@ -527,7 +521,7 @@ class AIChat {
         return assistantMessage;
     }
 
-    addMessage(content, role) {
+    addMessageToUI(content, role) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message-bubble flex';
         if (role === 'user') {
@@ -556,27 +550,16 @@ class AIChat {
     }
 
     focusInput() {
-        if (this.messageInput) {
-            this.messageInput.focus();
-        }
-    }
-
-    setInputState(enabled) {
-        this.messageInput.disabled = !enabled;
-        this.sendButton.disabled = !enabled || this.messageInput.value.trim().length === 0;
+        this.messageInput.focus();
     }
 
     showTypingIndicator() {
-        if (this.typingIndicator) {
-            this.typingIndicator.classList.remove('hidden');
-            this.scrollToBottom();
-        }
+        this.typingIndicator.classList.remove('hidden');
+        this.scrollToBottom();
     }
 
     hideTypingIndicator() {
-        if (this.typingIndicator) {
-            this.typingIndicator.classList.add('hidden');
-        }
+        this.typingIndicator.classList.add('hidden');
     }
 
     showError(message) {
@@ -592,14 +575,16 @@ class AIChat {
 
     scrollToBottom() {
         setTimeout(() => {
-            if (this.chatMessages) {
-                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
-            }
+            this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
         }, 100);
     }
 
     async shareConversation() {
-        if (!this.currentChatId) {
+        if (!this.currentUser) {
+            this.showError("You must be logged in to share a conversation.");
+            return;
+        }
+        if (!this.currentChatId || this.conversationHistory.length === 0) {
             this.showError("Please start a conversation before sharing.");
             return;
         }
@@ -612,9 +597,9 @@ class AIChat {
 
             const shareUrl = `${window.location.origin}${window.location.pathname}?share=${this.currentChatId}`;
             navigator.clipboard.writeText(shareUrl).then(() => {
-                alert(`Shareable link copied to clipboard:\n${shareUrl}`);
+                alert(`Shareable link copied to clipboard!`);
             }, () => {
-                this.showError("Failed to copy the link. You can manually copy it from here:\n" + shareUrl);
+                this.showError("Failed to copy link. You can manually copy it:\n" + shareUrl);
             });
         } catch (error) {
             this.showError(`Could not share conversation: ${error.message}`);
@@ -623,22 +608,63 @@ class AIChat {
 
     clearConversation() {
         this.conversationHistory = [];
-        this.currentChatId = null; // Start a new chat session
+        this.currentChatId = null;
         this.chatMessages.innerHTML = `<div class="message-bubble flex justify-start"><div class="ai-message welcome-message rounded-2xl rounded-bl-lg px-8 py-6 max-w-2xl"><p class="text-gray-700 text-lg font-medium leading-relaxed">Hello! I'm At41rv AI. How can I help you today?</p></div></div>`;
     }
+}
 
+// =================================================================
+// 3. APP INITIALIZATION & SHARED CHAT HANDLER
+// =================================================================
+
+async function handleSharedChatView() {
+    const params = new URLSearchParams(window.location.search);
+    const shareId = params.get('share');
+
+    if (shareId) {
+        const appContainer = document.getElementById('appContainer');
+        const sharedView = document.getElementById('sharedChatView');
+        const sharedMessagesContainer = document.getElementById('sharedChatMessages');
+
+        appContainer.classList.add('hidden');
+        sharedView.classList.remove('hidden');
+
+        sharedMessagesContainer.innerHTML = '<p class="text-center text-gray-500">Loading shared conversation...</p>';
+
+        try {
+            const doc = await db.collection('shared_chats').doc(shareId).get();
+            if (doc.exists) {
+                const chatData = doc.data();
+                sharedMessagesContainer.innerHTML = '';
+                chatData.messages.forEach(msg => {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'message-bubble flex';
+                    if (msg.role === 'user') {
+                        messageDiv.classList.add('justify-end');
+                        messageDiv.innerHTML = `<div class="user-message rounded-2xl rounded-br-none px-6 py-4 max-w-lg shadow-md"><p class="font-medium">${new AIChat().escapeHtml(msg.content)}</p></div>`;
+                    } else {
+                        messageDiv.classList.add('justify-start');
+                        messageDiv.innerHTML = `<div class="ai-message rounded-2xl rounded-bl-none px-6 py-4 max-w-lg shadow-md"><p class="text-gray-700 font-medium">${new AIChat().formatMessage(msg.content)}</p></div>`;
+                    }
+                    sharedMessagesContainer.appendChild(messageDiv);
+                });
+            } else {
+                sharedMessagesContainer.innerHTML = '<p class="text-center text-red-500">Sorry, this shared chat could not be found.</p>';
+            }
+        } catch (error) {
+            console.error("Error loading shared chat:", error);
+            sharedMessagesContainer.innerHTML = '<p class="text-center text-red-500">An error occurred while trying to load this chat.</p>';
+        }
+
+        return true;
+    }
+    return false;
 }
 
 
-document.addEventListener('DOMContentLoaded', () => {
-    window.aiChat = new AIChat();
-});
-
-document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
-        e.preventDefault();
-        if (window.aiChat && window.confirm('Clear conversation history?')) {
-            window.aiChat.clearConversation();
-        }
+document.addEventListener('DOMContentLoaded', async() => {
+    const inSharedView = await handleSharedChatView();
+    if (!inSharedView) {
+        window.aiChat = new AIChat();
     }
 });
