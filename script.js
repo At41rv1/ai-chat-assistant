@@ -227,7 +227,7 @@ class AIChat {
         this.closeHistoryButton = document.getElementById('closeHistoryButton');
         this.chatHistoryList = document.getElementById('chatHistoryList');
 
-
+        this.homeButton = document.getElementById('homeButton');
         this.settingsButton = document.getElementById('settingsButton');
         this.settingsModal = document.getElementById('settingsModal');
         this.closeSettingsModal = document.getElementById('closeSettingsModal');
