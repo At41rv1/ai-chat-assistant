@@ -1,49 +1,34 @@
 // =================================================================
-// 1. IMPORTANT: CONFIGURATION SECTION
+// 1. FIREBASE CONFIGURATION
 // =================================================================
-
-// ⬇️ *** ACTION REQUIRED *** ⬇️
-// Replace the placeholder values below with your actual Firebase project configuration.
-// You can find this in your Firebase project settings.
 const firebaseConfig = {
     apiKey: "AIzaSyDVqMiGSndJ_-emkCp1VUwOWXYwtjtzLM4",
     authDomain: "at41rvai-1abf9.firebaseapp.com",
     projectId: "at41rvai-1abf9",
     storageBucket: "at41rvai-1abf9.appspot.com",
     messagingSenderId: "127944898254",
-    appId: "1:127944898254:web:d1b74433d533ab3a65829f"
+    appId: "ADD_YOUR_APP_ID_HERE" // Recommended: Get from Firebase Console
 };
 
-// ⬇️ *** ACTION REQUIRED *** ⬇️
-// Replace the placeholder below with your actual Groq API key.
-// You can get a key from https://console.groq.com/keys
-const GROQ_API_KEY = "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";
-
-
-// =================================================================
-// 2. FIREBASE INITIALIZATION
-// =================================================================
+// Initialize Firebase
 try {
     firebase.initializeApp(firebaseConfig);
 } catch (e) {
     console.error("Firebase initialization error. Please check your firebaseConfig.", e);
-    alert("Could not connect to the server. Please check that you have entered your Firebase configuration details correctly in script.js.");
+    alert("Could not connect to the server. Please check your Firebase configuration.");
 }
 
 const auth = firebase.auth();
 const db = firebase.firestore();
 
 // =================================================================
-// 3. MAIN APP CLASS
+// 2. MAIN APP CLASS
 // =================================================================
 class AIChat {
     constructor() {
-        // API and Model configuration
-        this.groqApiKey = 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;
-        this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
-        this.model = 'llama-3.1-8b-instant'; // Default model
-
-        // State management
+        this.apiKey = '';
+        this.baseUrl = '';
+        this.model = 'llama-3.1-8b-instant';
         this.conversationHistory = [];
         this.currentChatId = null;
         this.currentUser = null;
@@ -54,62 +39,75 @@ class AIChat {
         this.initializeElements();
         this.attachEventListeners();
         this.initializeAuthStateListener();
+        this.setModelConfig(this.model);
     }
 
     // ==================================
-    // 3a. FIREBASE AUTHENTICATION & STATE
+    // 2a. FIREBASE AUTHENTICATION
     // ==================================
 
     initializeAuthStateListener() {
-        auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                // User is signed in
-                this.setAuthButtonLoadingState(false); // Ensure loading state is off
-                
-                let isPro = false;
-                try {
-                    const proDoc = await db.collection('pro_users').doc(user.email).get();
-                    if (proDoc.exists) {
-                        isPro = true;
-                    }
-                } catch (error) {
-                    console.error("Could not check Pro status:", error);
+        auth.onAuthStateChanged(async (user) => { // Make this async
+            // First, handle the case where there is no user (signed out)
+            if (!user) {
+                sessionStorage.removeItem('auth_just_reloaded'); // Clear flag on sign out
+                this.currentUser = null;
+                this.updateUserInfoUI(null);
+
+                // Only show welcome screen if not viewing a shared chat
+                const params = new URLSearchParams(window.location.search);
+                if (!params.has('share')) {
+                    this.showWelcomeScreen();
                 }
 
+                if (this.historyListenerUnsubscribe) this.historyListenerUnsubscribe();
+                return;
+            }
+            
+            // Check for Pro status
+            let isPro = false;
+            try {
+                const proDoc = await db.collection('pro_users').doc(user.email).get();
+                if (proDoc.exists) {
+                    isPro = true;
+                }
+            } catch (error) {
+                console.error("Could not check Pro status:", error);
+            }
+
+            // If there IS a user, check for our reload flag
+            if (sessionStorage.getItem('auth_just_reloaded')) {
+                // This is the execution AFTER the reload.
+                // The flag is present, so we can proceed to show the chat interface.
+                sessionStorage.removeItem('auth_just_reloaded'); // Clear the flag now that we've used it
+
+                // Set up the user object and UI
                 const userData = {
                     id: user.uid,
                     name: user.displayName || user.email.split('@')[0],
                     email: user.email,
                     picture: user.photoURL || `https://ui-avatars.com/api/?name=${user.email.charAt(0).toUpperCase()}&background=random&color=fff&size=128`,
-                    isPro: isPro
+                    isPro: isPro // Add pro status to user object
                 };
                 this.currentUser = userData;
-
                 this.updateUserInfoUI(this.currentUser);
                 this.loadSavedSettings();
                 this.listenForUserConversations();
+                
+                // CRITICAL FIX: Directly show the chat interface, hiding the welcome screen.
                 this.showChatInterface();
                 this.hideSettings();
 
-                // NOTE: This is an insecure way to grant admin rights.
-                // For a real application, use Firebase custom claims or a role-based system.
+                // Check if admin to show admin button
                 if (this.currentUser.email === 'at41rv@gmail.com') {
                     this.addAdminPanelButton();
                 }
 
             } else {
-                // User is signed out
-                this.currentUser = null;
-                this.updateUserInfoUI(null);
-
-                if (this.historyListenerUnsubscribe) {
-                    this.historyListenerUnsubscribe();
-                }
-
-                const params = new URLSearchParams(window.location.search);
-                if (!params.has('share')) {
-                    this.showWelcomeScreen();
-                }
+                // This is the first execution right after a login/signup action.
+                // The flag is NOT present, so we set it and trigger the one-time reload.
+                sessionStorage.setItem('auth_just_reloaded', 'true');
+                window.location.reload();
             }
         });
     }
@@ -126,9 +124,9 @@ class AIChat {
                     } else {
                         button.classList.add('opacity-50');
                     }
-                } else if (button.dataset.originalText) {
-                    button.innerHTML = button.dataset.originalText;
-                     if (button.id === 'googleSignInButton') {
+                } else {
+                    button.innerHTML = button.dataset.originalText || button.innerHTML;
+                    if (button.id === 'googleSignInButton') {
                         button.classList.remove('opacity-50');
                     }
                 }
@@ -191,18 +189,27 @@ class AIChat {
         });
     }
 
-    // ==================================
-    // 3b. UI ELEMENT & EVENT HANDLING
-    // ==================================
+    setModelConfig(modelName) {
+        if (modelName === 'llama-3.1-8b-instant') {
+            this.apiKey = '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';
+            this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
+        } else if (modelName === 'deepseek-r1-distill-llama-70b') {
+            this.apiKey = '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';
+            this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
+        }
+        this.model = modelName;
+    }
 
     initializeElements() {
         this.appContainer = document.getElementById('appContainer');
         this.sharedChatView = document.getElementById('sharedChatView');
         this.sharedChatMessages = document.getElementById('sharedChatMessages');
+
         this.welcomeScreen = document.getElementById('welcomeScreen');
         this.continueWithoutLogin = document.getElementById('continueWithoutLogin');
         this.signInForSync = document.getElementById('signInForSync');
-        this.startFree = document.getElementById('startFree');
+        this.startFree = document.getElementById('startFree'); 
+
         this.chatInterface = document.getElementById('chatInterface');
         this.userInfo = document.getElementById('userInfo');
         this.userAvatar = document.getElementById('userAvatar');
@@ -219,37 +226,48 @@ class AIChat {
         this.chatHistorySidebar = document.getElementById('chatHistorySidebar');
         this.closeHistoryButton = document.getElementById('closeHistoryButton');
         this.chatHistoryList = document.getElementById('chatHistoryList');
+
         this.homeButton = document.getElementById('homeButton');
         this.settingsButton = document.getElementById('settingsButton');
         this.settingsModal = document.getElementById('settingsModal');
         this.closeSettingsModal = document.getElementById('closeSettingsModal');
         this.autoSaveToggle = document.getElementById('autoSaveToggle');
         this.signOutButton = document.getElementById('signOutButton');
+
         this.signedInState = document.getElementById('signedInState');
         this.signedOutState = document.getElementById('signedOutState');
         this.authError = document.getElementById('authError');
+
         this.signInTabButton = document.getElementById('signInTabButton');
         this.signUpTabButton = document.getElementById('signUpTabButton');
+
         this.signInForm = document.getElementById('signInForm');
         this.signInEmail = document.getElementById('signInEmail');
         this.signInPassword = document.getElementById('signInPassword');
         this.signInButton = document.getElementById('signInButton');
         this.googleSignInButton = document.getElementById('googleSignInButton');
+
         this.signUpForm = document.getElementById('signUpForm');
         this.signUpEmail = document.getElementById('signUpEmail');
         this.signUpPassword = document.getElementById('signUpPassword');
         this.signUpButton = document.getElementById('signUpButton');
+
         this.settingsUserAvatar = document.getElementById('settingsUserAvatar');
         this.settingsUserName = document.getElementById('settingsUserName');
         this.settingsUserEmail = document.getElementById('settingsUserEmail');
+
         this.errorModal = document.getElementById('errorModal');
         this.errorMessage = document.getElementById('errorMessage');
         this.closeErrorModal = document.getElementById('closeErrorModal');
+
+        // Subscription Modal
         this.subscriptionModal = document.getElementById('subscriptionModal');
         this.subscriptionModalContent = document.getElementById('subscriptionModalContent');
         this.continueFree = document.getElementById('continueFree');
         this.closeSubscriptionModal = document.getElementById('closeSubscriptionModal');
-        this.adminPanelButton = document.getElementById('adminPanelButton');
+        
+        // Admin Panel
+        this.adminPanelButton = document.getElementById('adminPanelButton'); 
         this.adminPanelModal = document.getElementById('adminPanelModal');
         this.adminPanelContent = document.getElementById('adminPanelContent');
         this.closeAdminPanel = document.getElementById('closeAdminPanel');
@@ -259,9 +277,12 @@ class AIChat {
     }
 
     attachEventListeners() {
+        // Landing page buttons
         this.continueWithoutLogin.addEventListener('click', () => this.showChatInterface());
         this.startFree.addEventListener('click', () => this.showChatInterface());
         this.signInForSync.addEventListener('click', () => this.signInWithGoogle());
+
+        // Chat interface buttons
         this.homeButton.addEventListener('click', () => this.showWelcomeScreen());
         this.settingsButton.addEventListener('click', () => this.showSettings());
         this.historyButton.addEventListener('click', () => this.toggleSidebar());
@@ -273,6 +294,8 @@ class AIChat {
         });
         this.shareButton.addEventListener('click', () => this.shareConversation());
         this.sendButton.addEventListener('click', () => this.sendMessage());
+        
+        // Message input listeners
         this.messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -284,22 +307,30 @@ class AIChat {
                 this.sendButton.disabled = this.messageInput.value.trim().length === 0;
             }
         });
+
+        // Settings modal listeners
         this.closeSettingsModal.addEventListener('click', () => this.hideSettings());
         this.signOutButton.addEventListener('click', () => this.signOut());
         this.autoSaveToggle.addEventListener('change', (e) => {
             this.autoSave = e.target.checked;
             localStorage.setItem('autoSave', JSON.stringify(this.autoSave));
         });
+
+        // Auth form listeners
         this.googleSignInButton.addEventListener('click', () => this.signInWithGoogle());
         this.signInButton.addEventListener('click', () => this.signInWithEmail());
         this.signUpButton.addEventListener('click', () => this.signUpWithEmail());
         this.signInTabButton.addEventListener('click', () => this.switchAuthTab('signIn'));
         this.signUpTabButton.addEventListener('click', () => this.switchAuthTab('signUp'));
         this.closeErrorModal.addEventListener('click', () => this.hideErrorModal());
+        
+        // Subscription and Admin Panel Listeners
         this.continueFree.addEventListener('click', () => this.hideSubscriptionModal());
         this.closeSubscriptionModal.addEventListener('click', () => this.hideSubscriptionModal());
         this.closeAdminPanel.addEventListener('click', () => this.hideAdminPanel());
         this.addProUserButton.addEventListener('click', () => this.addProUser());
+
+        // Model selector listener
         this.modelSelector.addEventListener('change', (e) => this.handleModelChange(e.target.value));
     }
 
@@ -307,9 +338,11 @@ class AIChat {
         if (user) {
             [this.userInfo, this.signedInState].forEach(el => el.classList.remove('hidden'));
             this.signedOutState.classList.add('hidden');
+
             [this.userAvatar, this.settingsUserAvatar].forEach(el => el.src = user.picture);
             [this.userName, this.settingsUserName].forEach(el => el.textContent = user.name);
             [this.userEmail, this.settingsUserEmail].forEach(el => el.textContent = user.email);
+
         } else {
             this.userInfo.classList.add('hidden');
             if (this.settingsModal.style.display === 'flex') {
@@ -340,10 +373,12 @@ class AIChat {
             this.autoSave = JSON.parse(autoSave);
             this.autoSaveToggle.checked = this.autoSave;
         }
+
         const savedModel = localStorage.getItem('selectedModel');
         if (savedModel) {
             this.model = savedModel;
             this.modelSelector.value = savedModel;
+            this.setModelConfig(savedModel);
         }
     }
 
@@ -378,7 +413,7 @@ class AIChat {
     }
     
     // ==================================
-    // 3c. SUBSCRIPTION AND ADMIN METHODS
+    // Subscription and Admin Methods
     // ==================================
     
     showSubscriptionModal() {
@@ -398,7 +433,7 @@ class AIChat {
     }
 
     showAdminPanel() {
-        this.hideSettings();
+        this.hideSettings(); // Hide settings modal first
         this.adminPanelModal.classList.remove('hidden');
         setTimeout(() => {
             this.adminPanelModal.classList.remove('opacity-0');
@@ -417,12 +452,14 @@ class AIChat {
     async handleModelChange(selectedModel) {
         if (selectedModel === 'deepseek-r1-distill-llama-70b') {
             if (!this.currentUser || !this.currentUser.isPro) {
+                // Revert the selection
                 this.modelSelector.value = 'llama-3.1-8b-instant';
+                // Show the subscription modal
                 this.showSubscriptionModal();
                 return;
             }
         }
-        this.model = selectedModel;
+        this.setModelConfig(selectedModel);
         localStorage.setItem('selectedModel', selectedModel);
     }
 
@@ -456,7 +493,7 @@ class AIChat {
     
     addAdminPanelButton() {
         const settingsContainer = document.getElementById('signedInState');
-        if (settingsContainer && !document.getElementById('adminPanelButton')) {
+        if (settingsContainer && !document.getElementById('adminPanelButton')) { // Check if it doesn't exist
             const adminButton = document.createElement('button');
             adminButton.id = 'adminPanelButton';
             adminButton.className = 'w-full mt-4 bg-gray-800 text-white py-3 px-4 rounded-xl font-medium hover:bg-gray-900 transition-all duration-300';
@@ -468,9 +505,11 @@ class AIChat {
         }
     }
 
-    // ==================================
-    // 3d. CHAT & CONVERSATION LOGIC
-    // ==================================
+
+    showSignedOutState() {
+        if (this.signedOutState) this.signedOutState.classList.remove('hidden');
+        if (this.signedInState) this.signedInState.classList.add('hidden');
+    }
 
     toggleSidebar() {
         this.isSidebarOpen = !this.isSidebarOpen;
@@ -479,7 +518,10 @@ class AIChat {
 
     listenForUserConversations() {
         if (!this.currentUser) return;
-        if (this.historyListenerUnsubscribe) this.historyListenerUnsubscribe();
+
+        if (this.historyListenerUnsubscribe) {
+            this.historyListenerUnsubscribe(); // Unsubscribe from previous listener if it existss
+        }
 
         this.historyListenerUnsubscribe = db.collection('chats').doc(this.currentUser.id).collection('conversations').orderBy('timestamp', 'desc')
             .onSnapshot(snapshot => {
@@ -568,15 +610,11 @@ class AIChat {
     }
 
     async sendMessage() {
-        if (this.groqApiKey === "YOUR_GROQ_API_KEY" || !this.groqApiKey) {
-            this.showError("Invalid API Key. Please add your Groq API key to the 'script.js' file.");
-            return;
-        }
-
         const message = this.messageInput.value.trim();
         if (!message) return;
 
         this.setInputState(false);
+
         if (this.conversationHistory.length === 0) {
             this.chatMessages.innerHTML = '';
         }
@@ -584,18 +622,17 @@ class AIChat {
         this.addMessageToUI(message, 'user');
         this.conversationHistory.push({ role: 'user', content: message });
         this.messageInput.value = '';
+
         this.showTypingIndicator();
 
         try {
-            const response = await this.callGroqAPI();
+            const response = await this.callAPI(message, this.model);
             this.conversationHistory.push({ role: 'assistant', content: response });
             this.addMessageToUI(response, 'assistant');
             await this.saveConversationHistory();
         } catch (error) {
-            console.error('API Error:', error);
+            console.error('Error:', error);
             this.showError(error.message || 'An error occurred while processing your request.');
-            // Add a user-facing error message in the chat
-            this.addMessageToUI(`Error: ${error.message}`, 'assistant');
         } finally {
             this.hideTypingIndicator();
             this.setInputState(true);
@@ -603,19 +640,19 @@ class AIChat {
         }
     }
 
-    async callGroqAPI() {
-        const headers = {
+    async callAPI(message, currentModel) {
+        let headers = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.groqApiKey}`
+            'Authorization': `Bearer ${this.apiKey}`
         };
-        const requestBody = {
-            model: this.model,
+        let requestBody = {
+            model: currentModel,
             messages: this.conversationHistory,
             max_tokens: 1000,
             stream: false
         };
 
-        const response = await fetch(this.baseUrl, { method: 'POST', headers, body: JSON.stringify(requestBody) });
+        const response = await fetch(this.baseUrl, { method: 'POST', headers: headers, body: JSON.stringify(requestBody) });
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error((errorData.error && errorData.error.message) || `HTTP ${response.status}: ${response.statusText}`);
@@ -623,12 +660,9 @@ class AIChat {
         const data = await response.json();
         let assistantMessage = data.choices && data.choices[0] ? data.choices[0].message.content : "Sorry, I couldn't get a response.";
 
-        // Special handling for some models if needed
-        if (this.model === 'deepseek-r1-distill-llama-70b') {
+        if (currentModel === 'deepseek-r1-distill-llama-70b') {
             assistantMessage = assistantMessage.replace(/<think>[\s\S]*?<\/think>/, '').trim();
         }
-
-        // Keep history from getting too long
         if (this.conversationHistory.length > 20) {
             this.conversationHistory = this.conversationHistory.slice(-20);
         }
@@ -648,10 +682,6 @@ class AIChat {
         this.chatMessages.appendChild(messageDiv);
         this.scrollToBottom();
     }
-    
-    // ==================================
-    // 3e. UTILITY & HELPER METHODS
-    // ==================================
 
     formatMessage(content) {
         let formatted = this.escapeHtml(content);
@@ -732,7 +762,7 @@ class AIChat {
 }
 
 // =================================================================
-// 4. APP INITIALIZATION & SHARED CHAT HANDLER
+// 3. APP INITIALIZATION & SHARED CHAT HANDLER
 // =================================================================
 
 async function handleSharedChatView() {
@@ -754,16 +784,15 @@ async function handleSharedChatView() {
             if (doc.exists) {
                 const chatData = doc.data();
                 sharedMessagesContainer.innerHTML = '';
-                const tempChat = new AIChat(); // Use instance for formatting methods
                 chatData.messages.forEach(msg => {
                     const messageDiv = document.createElement('div');
                     messageDiv.className = 'message-bubble flex';
                     if (msg.role === 'user') {
                         messageDiv.classList.add('justify-end');
-                        messageDiv.innerHTML = `<div class="user-message rounded-2xl rounded-br-none px-6 py-4 max-w-lg shadow-md"><p class="font-medium">${tempChat.escapeHtml(msg.content)}</p></div>`;
+                        messageDiv.innerHTML = `<div class="user-message rounded-2xl rounded-br-none px-6 py-4 max-w-lg shadow-md"><p class="font-medium">${new AIChat().escapeHtml(msg.content)}</p></div>`;
                     } else {
                         messageDiv.classList.add('justify-start');
-                        messageDiv.innerHTML = `<div class="ai-message rounded-2xl rounded-bl-none px-6 py-4 max-w-lg shadow-md"><p class="text-gray-700 font-medium">${tempChat.formatMessage(msg.content)}</p></div>`;
+                        messageDiv.innerHTML = `<div class="ai-message rounded-2xl rounded-bl-none px-6 py-4 max-w-lg shadow-md"><p class="text-gray-700 font-medium">${new AIChat().formatMessage(msg.content)}</p></div>`;
                     }
                     sharedMessagesContainer.appendChild(messageDiv);
                 });
@@ -774,12 +803,14 @@ async function handleSharedChatView() {
             console.error("Error loading shared chat:", error);
             sharedMessagesContainer.innerHTML = '<p class="text-center text-red-500">An error occurred while trying to load this chat.</p>';
         }
-        return true; // Is in shared view
+
+        return true;
     }
-    return false; // Is not in shared view
+    return false;
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
+
+document.addEventListener('DOMContentLoaded', async() => {
     const inSharedView = await handleSharedChatView();
     if (!inSharedView) {
         window.aiChat = new AIChat();
