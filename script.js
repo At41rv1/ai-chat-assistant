@@ -520,7 +520,7 @@ class AIChat {
         if (!this.currentUser) return;
 
         if (this.historyListenerUnsubscribe) {
-            this.historyListenerUnsubscribe(); // Unsubscribe from previous listener if it exists
+            this.historyListenerUnsubscribe(); // Unsubscribe from previous listener if it existss
         }
 
         this.historyListenerUnsubscribe = db.collection('chats').doc(this.currentUser.id).collection('conversations').orderBy('timestamp', 'desc')
