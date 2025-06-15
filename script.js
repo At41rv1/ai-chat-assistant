@@ -2,7 +2,7 @@
 // 1. FIREBASE CONFIGURATION
 // =================================================================
 const firebaseConfig = {
-    apiKey: "AIzaSyDVqMiGSndJ_-emkCp1VUwOWXYwtjtzLM4",
+    apiKey: "API_KEY3",
     authDomain: "at41rvai-1abf9.firebaseapp.com",
     projectId: "at41rvai-1abf9",
     storageBucket: "at41rvai-1abf9.appspot.com",
@@ -197,10 +197,10 @@ class AIChat {
 
     setModelConfig(modelName) {
         if (modelName === 'llama-3.1-8b-instant') {
-            this.apiKey = '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';
+            this.apiKey = 'API_KEY1';
             this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
         } else if (modelName === 'deepseek-r1-distill-llama-70b') {
-            this.apiKey = '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';
+            this.apiKey = 'API_KEY2';
             this.baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
         }
         this.model = modelName;
