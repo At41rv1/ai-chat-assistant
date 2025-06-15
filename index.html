@@ -9,9 +9,267 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <meta name="google-signin-client_id" content="465923208288-hb4182d5ro58k30pkshh4knu3i62bvrh.apps.googleusercontent.com">
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAJESURBVFhH7ZY9aBRBFMf/b3Zv70wuxkSNUcFGFEQQG0WwEqysLMS0FoKVYGFhYSd2IoqFhYUINmJnI1gJgoXYKAhBVDSJURM1yWVv92YeM7t3mbu9XO4Sm4B/ePDNzr6d9/vem5k7gE6n0+l0Ot3/ArXxrcUspb0pUDqGQBKEjEEIgVg4iKMEhm0hlXJgOw6M0EQ+l4XtZJCyHRhm6vcEwjACIQSGYcB0LLAkQ+A3EAQBwtBHHIXwPA+u58IPQrTbHvygCz8M4QcRQt9D4Ifw/AAEBCEhiOMYlEYIwxBxHCOKIsRxjCiKQCkFYwyUUvi+j06ng06ng263i1arhVarhVar9bMJz/PQ7XbRbDZRr9fRaDRQq9VQrVZRqVRQqVRQKpVQKpVQKBSQz+eRy+WQzWaRyWTgOA5s24ZlWTBNE4ZhQAjxh4AkSZAkCeI4Rr/fR7/fR7/fR7fbRbvdRrvdhuuqELuui2aziUajgVqthmq1inK5jGKxiEKhgHw+j1wuh0wmA8dxYNs2LMuCaZowDAOEEBBCQAhRAvL5JEkghIDneWg0GqjX66jX63BdF81mE67rolarodFooF6vo16vo16vo1aroVqtolKpoFwuo1gsIp/PI5vNwnEcOI4Dx3FgWRYsy4JpmjAMA4QQEEJACIEQAiEEQggopdKAUoperwfP8+B5HjzPg+d58DwPnueh2+2i0+mg0+mg0+mg2+3KOfd9H0EQIAgChGGIMAwRRRGiKEKSJEiSBEmSIEkSJEkCxhjSNAVjDIwxMMbAGANjDJRSUEpBKQWlFJRSjOUbqjYscSoJc/MAAAAASUVORK5CYII=">
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Mobile-First Styles */
+        @media (max-width: 768px) {
+            .gradient-bg {
+                background: #ffffff;
+            }
+
+            /* Mobile Navigation */
+            .nav-header .flex.items-center.space-x-3 {
+                gap: 0.75rem;
+            }
+
+            .nav-header {
+                min-height: 60px;
+                display: flex;
+                align-items: center;
+            }
+
+            .nav-button {
+                padding: 0.625rem;
+                font-size: 0.875rem;
+                height: 44px;
+                width: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            /* Fix 100vh issue on mobile */
+            .min-h-screen {
+                min-height: 100vh;
+                min-height: -webkit-fill-available;
+            }
+
+            html {
+                height: -webkit-fill-available;
+            }
+
+            /* Improve mobile button spacing */
+            .flex.flex-col.sm\\:flex-row.gap-4 {
+                gap: 0.75rem;
+            }
+
+            /* Better touch feedback */
+            .nav-button:active,
+            .auth-button:active,
+            .send-button:active {
+                transform: scale(0.98);
+            }
+
+            #modelSelector {
+                max-width: 120px;
+                font-size: 0.75rem;
+                padding: 0.375rem;
+            }
+
+            /* Hide less important nav items on mobile */
+            #shareButton, #clearChatButton {
+                display: none;
+            }
+
+            .nav-header {
+                background: #ffffff !important;
+                border-bottom: 1px solid #e5e5e5;
+                padding: 0.75rem;
+                position: fixed;
+                width: 100%;
+                top: 0;
+                z-index: 50;
+            }
+
+            /* Chat Container */
+            .chat-container {
+                height: calc(100vh - 140px);
+                padding-top: 60px;
+                margin-bottom: 60px; /* Space for fixed input container */
+            }
+
+            #chatMessages {
+                padding: 1rem;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* Ensure content doesn't get hidden behind fixed elements */
+            #chatInterface {
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+
+            /* Chat Messages */
+            .message-bubble {
+                max-width: 85%;
+                margin-bottom: 1rem;
+            }
+
+            .user-message {
+                background: #4a4a4a;
+                color: white;
+                padding: 0.875rem 1rem;
+                border-radius: 1rem 1rem 0 1rem;
+                margin-left: auto;
+                font-size: 0.9375rem;
+            }
+
+            .ai-message {
+                background: #f3f4f6;
+                color: #333333;
+                padding: 0.875rem 1rem;
+                border-radius: 1rem 1rem 1rem 0;
+                margin-right: auto;
+                font-size: 0.9375rem;
+                border: 1px solid #e5e7eb;
+            }
+
+            /* Input Container */
+            .input-container {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: #ffffff;
+                border-top: 1px solid #e5e5e5;
+                padding: 0.75rem;
+                z-index: 40;
+                box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
+            }
+
+            .message-input {
+                background: #f8f8f8;
+                border: 1px solid #e5e5e5;
+                border-radius: 12px;
+                padding: 0.875rem;
+                font-size: 1rem;
+            }
+
+            .send-button {
+                background: #4a4a4a;
+                min-width: 80px;
+                height: 44px;
+                border-radius: 12px;
+            }
+
+            #chatHistorySidebar {
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .user-message {
+                background: #4a4a4a;
+                color: white;
+            }
+
+            .ai-message {
+                background: #f8f8f8;
+                color: #333333;
+            }
+
+            /* Landing Page Mobile Styles */
+            .landing-hero {
+                padding: 1.5rem 1rem;
+            }
+
+            .landing-title {
+                font-size: 2rem;
+                line-height: 1.2;
+                margin-bottom: 1rem;
+            }
+
+            /* Welcome Screen */
+            #welcomeScreen .flex.flex-col.lg\\:flex-row {
+                gap: 2rem;
+            }
+
+            #welcomeScreen .glass-effect {
+                margin: 0 1rem;
+                padding: 1.25rem;
+            }
+
+            /* Pricing Section */
+            #pricing {
+                padding: 3rem 1rem;
+                background: #f8f8f8;
+            }
+
+            .pricing-card {
+                padding: 1.5rem;
+                margin: 0.5rem;
+                background: white;
+                border-radius: 1rem;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+
+            /* Footer Mobile Styles */
+            footer {
+                padding: 2rem 1rem;
+            }
+
+            footer .grid {
+                gap: 2rem;
+            }
+
+            /* Modal Styles */
+            .modal-content {
+                width: 90%;
+                max-width: none;
+                margin: 1rem;
+                padding: 1.25rem;
+                border-radius: 1rem;
+                max-height: 90vh;
+                overflow-y: auto;
+                background: white;
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            }
+
+            /* Auth Buttons and Forms */
+            .auth-button {
+                height: 44px;
+                font-size: 1rem;
+                width: 100%;
+                border-radius: 0.75rem;
+                background: #4a4a4a;
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s ease;
+            }
+
+            .auth-button:active {
+                transform: scale(0.98);
+            }
+
+            .auth-tab {
+                font-size: 0.9375rem;
+                padding: 0.75rem;
+            }
+
+            /* Form Inputs */
+            input[type="text"],
+            input[type="email"],
+            input[type="password"] {
+                width: 100%;
+                padding: 0.75rem;
+                border-radius: 0.75rem;
+                border: 1px solid #e5e7eb;
+                background: #f8f8f8;
+                font-size: 1rem;
+            }
+
+            /* Improve touch targets */
+            button, 
+            a {
+                min-height: 44px;
+                padding: 0.5rem 1rem;
+            }
         }
         
         .chat-container {
@@ -523,12 +781,27 @@
                         </div>
                     </div>
 
-                    <div class="glass-effect rounded-3xl shadow-2xl overflow-hidden flex-1 border border-gray-200/50 max-w-6xl mx-auto">
+                    <div class="glass-effect rounded-3xl shadow-2xl overflow-hidden flex-1 border border-gray-200/50 max-w-6xl mx-auto bg-white/90">
                         <div class="relative h-[calc(100vh-12rem)] md:h-[calc(100vh-14rem)] flex flex-col">
-                            <div id="chatMessages" class="chat-messages overflow-y-auto p-6 md:p-8 space-y-6 md:space-y-8 flex-1">
-                                <div class="message-bubble flex justify-start">
-                                    <div class="ai-message welcome-message rounded-2xl rounded-bl-lg px-8 py-6 max-w-2xl backdrop-blur-sm">
-                                        <p class="text-gray-700 text-lg font-medium leading-relaxed">
+                            <div class="bg-gradient-to-b from-gray-50 to-white/50 backdrop-blur-sm border-b border-gray-100 p-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                        <span class="text-sm text-gray-600">AI Assistant Online</span>
+                                    </div>
+                                    <div class="text-sm text-gray-500">At41rv AI</div>
+                                </div>
+                            </div>
+                            
+                            <div id="chatMessages" class="chat-messages overflow-y-auto p-6 md:p-8 space-y-6 md:space-y-8 flex-1 bg-gradient-to-b from-gray-50/50 to-white/50">
+                                <div class="message-bubble flex justify-start items-start space-x-3">
+                                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ai-message welcome-message rounded-2xl rounded-tl-sm px-6 py-4 max-w-2xl shadow-sm">
+                                        <p class="text-gray-700 text-base font-medium leading-relaxed">
                                             Hello! I'm At41rv AI. How can I help you today?
                                         </p>
                                     </div>
@@ -547,18 +820,29 @@
                                 </div>
                             </div>
 
-                            <div class="input-container border-t border-gray-200/50 bg-white/80 backdrop-blur-sm p-6 md:p-8">
-                                <div class="flex flex-col sm:flex-row gap-4">
-                                    <div class="relative flex-1">
-                                        <input type="text" id="messageInput" placeholder="Type your message here..." class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-6 py-4 text-lg text-gray-700 placeholder-gray-400 transition-all duration-300 focus:border-gray-400 focus:ring-0"
-                                            maxlength="1000">
+                            <div class="input-container border-t border-gray-200/50 bg-white/95 backdrop-blur-sm p-4 md:p-6">
+                                <div class="max-w-4xl mx-auto">
+                                    <div class="flex items-end space-x-3">
+                                        <div class="relative flex-1">
+                                            <input type="text" id="messageInput" 
+                                                placeholder="Type your message here..." 
+                                                class="message-input w-full bg-gray-50/80 border border-gray-200 rounded-2xl pl-4 pr-12 py-4 text-base text-gray-700 placeholder-gray-400 transition-all duration-300 focus:border-gray-400 focus:ring-0 focus:shadow-lg"
+                                                maxlength="1000"
+                                                aria-label="Message input">
+                                            <div class="absolute right-4 bottom-4 text-xs text-gray-400 pointer-events-none">
+                                                1000
+                                            </div>
+                                        </div>
+                                        <button id="sendButton" 
+                                            class="send-button bg-gray-900 text-white p-4 rounded-xl text-base font-medium transition-all duration-300 flex items-center justify-center hover:bg-gray-800 hover:shadow-lg active:transform active:scale-95">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                            </svg>
+                                        </button>
                                     </div>
-                                    <button id="sendButton" class="send-button text-white px-8 py-4 rounded-xl text-lg font-medium transition-all duration-300 flex items-center justify-center min-w-[120px] hover:transform hover:scale-105">
-                                    Send
-                                </button>
-                                </div>
-                                <div class="mt-3 text-sm text-gray-400 text-center tracking-wide">
-                                    Press Enter to send • Max 1000 characters
+                                    <div class="mt-2 text-xs text-gray-400 text-center">
+                                        Press Enter to send • Max 1000 characters
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -628,11 +912,27 @@
                         <p id="authError" class="text-red-500 text-sm mb-4 text-center h-5"></p>
 
                         <div id="signInForm" class="space-y-4">
-                            <input type="email" id="signInEmail" placeholder="Email Address" class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 text-base">
-                            <input type="password" id="signInPassword" placeholder="Password" class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 text-base">
-                            <button id="signInButton" class="auth-button w-full bg-indigo-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-indigo-700 transition-all">
-                                Sign In
-                            </button>
+                            <form id="loginForm" class="space-y-4" onsubmit="return false;">
+                                <input type="email" id="signInEmail" 
+                                    placeholder="Email Address" 
+                                    class="message-input w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base"
+                                    required
+                                    autocomplete="username"
+                                    aria-label="Email Address">
+                                <div class="relative">
+                                    <input type="password" id="signInPassword" 
+                                        placeholder="Password" 
+                                        class="message-input w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base"
+                                        required 
+                                        minlength="6"
+                                        autocomplete="current-password"
+                                        aria-label="Password">
+                                </div>
+                                <button type="submit" id="signInButton" 
+                                    class="auth-button w-full bg-gray-900 text-white py-3 px-4 rounded-xl font-medium hover:bg-gray-800 transition-all">
+                                    Sign In
+                                </button>
+                            </form>
                             <div class="relative flex items-center justify-center my-2">
                                 <div class="w-full border-t border-gray-300"></div>
                                 <div class="relative -top-3 px-2 bg-white text-gray-500 text-sm">Or</div>
@@ -649,11 +949,32 @@
                         </div>
 
                         <div id="signUpForm" class="hidden space-y-4">
-                            <input type="email" id="signUpEmail" placeholder="Email Address" class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 text-base">
-                            <input type="password" id="signUpPassword" placeholder="Choose a Password (min. 6 characters)" class="message-input w-full bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 text-base">
-                            <button id="signUpButton" class="auth-button w-full bg-indigo-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-indigo-700 transition-all">
-                                Create Account
-                            </button>
+                            <form id="signupForm" class="space-y-4" onsubmit="return false;">
+                                <input type="email" id="signUpEmail" 
+                                    placeholder="Email Address" 
+                                    class="message-input w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base"
+                                    required
+                                    autocomplete="username"
+                                    aria-label="Email Address">
+                                <div class="relative">
+                                    <input type="password" id="signUpPassword" 
+                                        placeholder="Choose a Password (min. 6 characters)" 
+                                        class="message-input w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-base"
+                                        required 
+                                        minlength="6"
+                                        pattern="^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$"
+                                        autocomplete="new-password"
+                                        aria-label="New Password"
+                                        title="Password must be at least 6 characters long and contain both letters and numbers">
+                                    <div class="text-xs text-gray-500 mt-1 ml-1">
+                                        Password must contain at least 6 characters with letters and numbers
+                                    </div>
+                                </div>
+                                <button type="submit" id="signUpButton" 
+                                    class="auth-button w-full bg-gray-900 text-white py-3 px-4 rounded-xl font-medium hover:bg-gray-800 transition-all">
+                                    Create Account
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>
