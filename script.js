@@ -37,9 +37,15 @@ class AIChat {
         this.historyListenerUnsubscribe = null;
 
         this.initializeElements();
-        this.attachEventListeners();
+        this.initializeEventListeners();
         this.initializeAuthStateListener();
         this.setModelConfig(this.model);
+
+        // Handle initial view based on URL params
+        const params = new URLSearchParams(window.location.search);
+        if (!params.has('share')) {
+            this.showWelcomeScreen();
+        }
     }
 
     // ==================================
@@ -201,16 +207,48 @@ class AIChat {
     }
 
     initializeElements() {
+        // Get all the main containers
         this.appContainer = document.getElementById('appContainer');
         this.sharedChatView = document.getElementById('sharedChatView');
         this.sharedChatMessages = document.getElementById('sharedChatMessages');
-
         this.welcomeScreen = document.getElementById('welcomeScreen');
+        this.chatInterface = document.getElementById('chatInterface');
+
+        // Get welcome screen buttons
         this.continueWithoutLogin = document.getElementById('continueWithoutLogin');
         this.signInForSync = document.getElementById('signInForSync');
-        this.startFree = document.getElementById('startFree'); 
+        this.startFree = document.getElementById('startFree');
 
-        this.chatInterface = document.getElementById('chatInterface');
+        // Log button initialization
+        console.log('Welcome screen buttons:', {
+            continueWithoutLogin: !!this.continueWithoutLogin,
+            signInForSync: !!this.signInForSync,
+            startFree: !!this.startFree
+        });
+
+        // Add direct click handlers for welcome screen buttons
+        if (this.continueWithoutLogin) {
+            this.continueWithoutLogin.onclick = () => {
+                console.log('Start Chatting button clicked');
+                this.showChatInterface();
+            };
+        } else {
+            console.error('Start Chatting button not found');
+        }
+
+        if (this.startFree) {
+            this.startFree.onclick = () => {
+                console.log('Start Free button clicked');
+                this.showChatInterface();
+            };
+        }
+
+        if (this.signInForSync) {
+            this.signInForSync.onclick = () => {
+                console.log('Sign in button clicked');
+                this.signInWithGoogle();
+            };
+        }
         this.userInfo = document.getElementById('userInfo');
         this.userAvatar = document.getElementById('userAvatar');
         this.userName = document.getElementById('userName');
@@ -277,61 +315,438 @@ class AIChat {
     }
 
     attachEventListeners() {
+        const addSafeEventListener = (element, events, handler) => {
+            if (element) {
+                events.forEach(evt => {
+                    element.addEventListener(evt, handler, { passive: false });
+                });
+            }
+        };
+
         // Landing page buttons
-        this.continueWithoutLogin.addEventListener('click', () => this.showChatInterface());
-        this.startFree.addEventListener('click', () => this.showChatInterface());
-        this.signInForSync.addEventListener('click', () => this.signInWithGoogle());
+        addSafeEventListener(this.continueWithoutLogin, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.showChatInterface();
+        });
+
+        addSafeEventListener(this.startFree, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.showChatInterface();
+        });
+
+        addSafeEventListener(this.signInForSync, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.signInWithGoogle();
+        });
 
         // Chat interface buttons
-        this.homeButton.addEventListener('click', () => this.showWelcomeScreen());
-        this.settingsButton.addEventListener('click', () => this.showSettings());
-        this.historyButton.addEventListener('click', () => this.toggleSidebar());
-        this.closeHistoryButton.addEventListener('click', () => this.toggleSidebar());
-        this.clearChatButton.addEventListener('click', () => {
+        addSafeEventListener(this.homeButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.showWelcomeScreen();
+        });
+
+        addSafeEventListener(this.settingsButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.showSettings();
+        });
+
+        addSafeEventListener(this.historyButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.toggleSidebar();
+        });
+
+        addSafeEventListener(this.closeHistoryButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.toggleSidebar();
+        });
+
+        addSafeEventListener(this.clearChatButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
             if (window.confirm('Are you sure you want to start a new conversation? The current one will be saved to your history.')) {
                 this.clearConversation();
             }
         });
-        this.shareButton.addEventListener('click', () => this.shareConversation());
-        this.sendButton.addEventListener('click', () => this.sendMessage());
-        
-        // Message input listeners
-        this.messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.sendMessage();
-            }
+
+        addSafeEventListener(this.shareButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.shareConversation();
         });
-        this.messageInput.addEventListener('input', () => {
-            if (!this.sendButton.dataset.busy) {
-                this.sendButton.disabled = this.messageInput.value.trim().length === 0;
-            }
+
+        addSafeEventListener(this.sendButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.sendMessage();
         });
 
         // Settings modal listeners
-        this.closeSettingsModal.addEventListener('click', () => this.hideSettings());
-        this.signOutButton.addEventListener('click', () => this.signOut());
-        this.autoSaveToggle.addEventListener('change', (e) => {
-            this.autoSave = e.target.checked;
-            localStorage.setItem('autoSave', JSON.stringify(this.autoSave));
+        addSafeEventListener(this.closeSettingsModal, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.hideSettings();
         });
 
-        // Auth form listeners
-        this.googleSignInButton.addEventListener('click', () => this.signInWithGoogle());
-        this.signInButton.addEventListener('click', () => this.signInWithEmail());
-        this.signUpButton.addEventListener('click', () => this.signUpWithEmail());
-        this.signInTabButton.addEventListener('click', () => this.switchAuthTab('signIn'));
-        this.signUpTabButton.addEventListener('click', () => this.switchAuthTab('signUp'));
-        this.closeErrorModal.addEventListener('click', () => this.hideErrorModal());
-        
-        // Subscription and Admin Panel Listeners
-        this.continueFree.addEventListener('click', () => this.hideSubscriptionModal());
-        this.closeSubscriptionModal.addEventListener('click', () => this.hideSubscriptionModal());
-        this.closeAdminPanel.addEventListener('click', () => this.hideAdminPanel());
-        this.addProUserButton.addEventListener('click', () => this.addProUser());
+        addSafeEventListener(this.signOutButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.signOut();
+        });
+
+        // Message input listeners
+        if (this.messageInput) {
+            this.messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendMessage();
+                }
+            });
+
+            this.messageInput.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.messageInput.focus();
+            });
+
+            this.messageInput.addEventListener('input', () => {
+                if (!this.sendButton.dataset.busy) {
+                    this.sendButton.disabled = this.messageInput.value.trim().length === 0;
+                }
+            });
+        }
+
+        // Chat messages touch scrolling
+        if (this.chatMessages) {
+            let touchStartY;
+            this.chatMessages.addEventListener('touchstart', (e) => {
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            this.chatMessages.addEventListener('touchmove', (e) => {
+                const touchY = e.touches[0].clientY;
+                const scrollTop = this.chatMessages.scrollTop;
+                const scrollHeight = this.chatMessages.scrollHeight;
+                const clientHeight = this.chatMessages.clientHeight;
+
+                if (scrollTop <= 0 && touchY > touchStartY) {
+                    e.preventDefault();
+                }
+                if (scrollTop + clientHeight >= scrollHeight && touchY < touchStartY) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+        }
+
+        // Other listeners
+        if (this.autoSaveToggle) {
+            this.autoSaveToggle.addEventListener('change', (e) => {
+                this.autoSave = e.target.checked;
+                localStorage.setItem('autoSave', JSON.stringify(this.autoSave));
+            });
+        }
+
+        if (this.modelSelector) {
+            this.modelSelector.addEventListener('change', (e) => {
+                this.handleModelChange(e.target.value);
+            });
+        }
+    }
+
+    showWelcomeScreen() {
+        if (this.welcomeScreen && this.chatInterface) {
+            this.welcomeScreen.classList.remove('hidden');
+            this.chatInterface.classList.add('hidden');
+        }
+    }
+
+    showChatInterface() {
+        if (this.welcomeScreen && this.chatInterface) {
+            this.welcomeScreen.classList.add('hidden');
+            this.chatInterface.classList.remove('hidden');
+            
+            // Reset scroll position and ensure proper layout
+            if (this.chatMessages) {
+                this.chatMessages.scrollTop = 0;
+            }
+            
+            // Clear conversation if needed
+            if (!this.currentChatId) {
+                this.clearConversation();
+            }
+            
+            // Focus input and adjust layout
+            if (this.messageInput) {
+                this.messageInput.focus();
+                // Ensure the input is visible on mobile
+                setTimeout(() => {
+                    window.scrollTo(0, 0);
+                }, 100);
+            }
+
+            // Hide user info in header
+            if (this.userInfo) {
+                this.userInfo.style.display = 'none';
+            }
+        }
+    }
+
+    showSettings() {
+        if (this.settingsModal) {
+            this.settingsModal.classList.remove('hidden', 'opacity-0');
+            this.settingsModal.style.display = 'flex';
+            this.updateUserInfoUI(this.currentUser);
+            if (!this.currentUser) {
+                this.switchAuthTab('signIn');
+            }
+        }
+    }
+
+    hideSettings() {
+        if (this.settingsModal) {
+            this.settingsModal.classList.add('opacity-0');
+            setTimeout(() => {
+                this.settingsModal.style.display = 'none';
+            }, 200);
+        }
+    }
+
+    toggleSidebar() {
+        if (this.chatHistorySidebar) {
+            this.isSidebarOpen = !this.isSidebarOpen;
+            this.chatHistorySidebar.classList.toggle('active');
+        }
+    }
+
+    clearConversation() {
+        this.conversationHistory = [];
+        this.currentChatId = null;
+        if (this.chatMessages) {
+            this.chatMessages.innerHTML = `
+                <div class="message-bubble flex justify-start">
+                    <div class="ai-message welcome-message rounded-2xl rounded-bl-lg px-8 py-6 max-w-2xl">
+                        <p class="text-gray-700 text-lg font-medium leading-relaxed">
+                            Hello! I'm At41rv AI. How can I help you today?
+                        </p>
+                    </div>
+                </div>`;
+        }
+    }
+
+    setInputState(enabled) {
+        if (this.messageInput && this.sendButton) {
+            this.messageInput.disabled = !enabled;
+            this.sendButton.disabled = !enabled;
+            if (enabled) {
+                this.sendButton.removeAttribute('data-busy');
+                this.sendButton.disabled = this.messageInput.value.trim().length === 0;
+            } else {
+                this.sendButton.setAttribute('data-busy', 'true');
+            }
+        }
+    }
+
+    focusInput() {
+        if (this.messageInput) {
+            this.messageInput.focus();
+        }
+    }
+
+    initializeEventListeners() {
+        // Direct event listeners for welcome screen buttons
+        const setupWelcomeButtons = () => {
+            console.log('Setting up welcome screen buttons');
+            
+            if (this.continueWithoutLogin) {
+                console.log('Found Start Chatting button, adding listeners');
+                ['click', 'touchend'].forEach(eventType => {
+                    this.continueWithoutLogin.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        console.log(`Start chatting button ${eventType}`);
+                        this.showChatInterface();
+                    });
+                });
+            } else {
+                console.error('Start Chatting button not found');
+            }
+
+            if (this.startFree) {
+                ['click', 'touchend'].forEach(eventType => {
+                    this.startFree.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        console.log(`Start free button ${eventType}`);
+                        this.showChatInterface();
+                    });
+                });
+            }
+
+            if (this.signInForSync) {
+                ['click', 'touchend'].forEach(eventType => {
+                    this.signInForSync.addEventListener(eventType, (e) => {
+                        e.preventDefault();
+                        console.log(`Sign in button ${eventType}`);
+                        this.signInWithGoogle();
+                    });
+                });
+            }
+        };
+
+        setupWelcomeButtons();
+
+        const addSafeEventListener = (element, events, handler) => {
+            if (element) {
+                events.forEach(evt => {
+                    element.addEventListener(evt, handler, { passive: false });
+                });
+            }
+        };
+
+        // Chat interface buttons
+        addSafeEventListener(this.homeButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.showWelcomeScreen();
+        });
+
+        addSafeEventListener(this.settingsButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.showSettings();
+        });
+
+        addSafeEventListener(this.historyButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.toggleSidebar();
+        });
+
+        addSafeEventListener(this.closeHistoryButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.toggleSidebar();
+        });
+
+        addSafeEventListener(this.clearChatButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            if (window.confirm('Are you sure you want to start a new conversation? The current one will be saved to your history.')) {
+                this.clearConversation();
+            }
+        });
+
+        addSafeEventListener(this.shareButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.shareConversation();
+        });
+
+        addSafeEventListener(this.sendButton, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.sendMessage();
+        });
+
+        // Message input listeners with mobile optimization
+        if (this.messageInput) {
+            this.messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.sendMessage();
+                }
+            });
+
+            this.messageInput.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.messageInput.focus();
+            }, { passive: false });
+
+            this.messageInput.addEventListener('input', () => {
+                if (!this.sendButton.dataset.busy) {
+                    this.sendButton.disabled = this.messageInput.value.trim().length === 0;
+                }
+            });
+        }
+
+        // Chat messages touch scrolling
+        if (this.chatMessages) {
+            let touchStartY;
+            this.chatMessages.addEventListener('touchstart', (e) => {
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            this.chatMessages.addEventListener('touchmove', (e) => {
+                const touchY = e.touches[0].clientY;
+                const scrollTop = this.chatMessages.scrollTop;
+                const scrollHeight = this.chatMessages.scrollHeight;
+                const clientHeight = this.chatMessages.clientHeight;
+
+                if (scrollTop <= 0 && touchY > touchStartY) {
+                    e.preventDefault();
+                }
+                if (scrollTop + clientHeight >= scrollHeight && touchY < touchStartY) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+        }
+
+        // Settings modal and overlay listeners
+        addSafeEventListener(this.settingsModal, ['click'], (e) => {
+            if (e.target === this.settingsModal) {
+                this.hideSettings();
+            }
+        });
+
+        addSafeEventListener(this.closeSettingsModal, ['click', 'touchend'], (e) => {
+            e.preventDefault();
+            this.hideSettings();
+        });
+
+        // Settings and auth related listeners
+        if (this.autoSaveToggle) {
+            this.autoSaveToggle.addEventListener('change', (e) => {
+                this.autoSave = e.target.checked;
+                localStorage.setItem('autoSave', JSON.stringify(this.autoSave));
+            });
+        }
+
+        // Mobile-specific touch handlers for modals
+        const preventScroll = (e) => {
+            if (e.target.closest('.modal-content')) return;
+            e.preventDefault();
+        };
+
+        [this.settingsModal, this.subscriptionModal, this.adminPanelModal, this.errorModal].forEach(modal => {
+            if (modal) {
+                modal.addEventListener('touchmove', preventScroll, { passive: false });
+            }
+        });
 
         // Model selector listener
-        this.modelSelector.addEventListener('change', (e) => this.handleModelChange(e.target.value));
+        if (this.modelSelector) {
+            this.modelSelector.addEventListener('change', (e) => {
+                this.handleModelChange(e.target.value);
+            });
+        }
+
+        // Auth form listeners
+        if (this.googleSignInButton) {
+            this.googleSignInButton.addEventListener('click', () => this.signInWithGoogle());
+        }
+        if (this.signInButton) {
+            this.signInButton.addEventListener('click', () => this.signInWithEmail());
+        }
+        if (this.signUpButton) {
+            this.signUpButton.addEventListener('click', () => this.signUpWithEmail());
+        }
+        if (this.signInTabButton) {
+            this.signInTabButton.addEventListener('click', () => this.switchAuthTab('signIn'));
+        }
+        if (this.signUpTabButton) {
+            this.signUpTabButton.addEventListener('click', () => this.switchAuthTab('signUp'));
+        }
+        if (this.closeErrorModal) {
+            this.closeErrorModal.addEventListener('click', () => this.hideErrorModal());
+        }
+
+        // Subscription and Admin Panel Listeners
+        if (this.continueFree) {
+            this.continueFree.addEventListener('click', () => this.hideSubscriptionModal());
+        }
+        if (this.closeSubscriptionModal) {
+            this.closeSubscriptionModal.addEventListener('click', () => this.hideSubscriptionModal());
+        }
+        if (this.closeAdminPanel) {
+            this.closeAdminPanel.addEventListener('click', () => this.hideAdminPanel());
+        }
+        if (this.addProUserButton) {
+            this.addProUserButton.addEventListener('click', () => this.addProUser());
+        }
     }
 
     updateUserInfoUI(user) {
@@ -643,7 +1058,8 @@ class AIChat {
     async callAPI(message, currentModel) {
         let headers = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Accept': 'application/json'
         };
         let requestBody = {
             model: currentModel,
@@ -652,7 +1068,12 @@ class AIChat {
             stream: false
         };
 
-        const response = await fetch(this.baseUrl, { method: 'POST', headers: headers, body: JSON.stringify(requestBody) });
+        const response = await fetch(this.baseUrl, { 
+            method: 'POST', 
+            headers: headers, 
+            body: JSON.stringify(requestBody),
+            mode: 'cors'
+        });
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error((errorData.error && errorData.error.message) || `HTTP ${response.status}: ${response.statusText}`);
