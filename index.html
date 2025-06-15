@@ -23,24 +23,37 @@
             }
 
             /* Mobile Navigation */
-            .nav-header .flex.items-center.space-x-3 {
-                gap: 0.75rem;
-            }
-
             .nav-header {
                 min-height: 60px;
                 display: flex;
                 align-items: center;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 50;
+                background: #ffffff;
+                border-bottom: 1px solid #e5e5e5;
+                padding: 0.75rem;
             }
 
-            .nav-button {
-                padding: 0.625rem;
-                font-size: 0.875rem;
-                height: 44px;
-                width: 44px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
+            .nav-header .flex.items-center.space-x-3 {
+                gap: 0.75rem;
+            }
+
+            /* Hide user info in header */
+            #userInfo {
+                display: none !important;
+            }
+
+            /* Fix chat container height */
+            .chat-container {
+                height: calc(100vh - 120px);
+                max-height: calc(100vh - 120px);
+                margin-top: 60px;
+                overflow-y: auto;
+                padding: 1rem;
+                -webkit-overflow-scrolling: touch;
             }
 
             /* Fix 100vh issue on mobile */
@@ -51,6 +64,17 @@
 
             html {
                 height: -webkit-fill-available;
+            }
+
+            /* Adjust button styles */
+            .nav-button {
+                padding: 0.625rem;
+                font-size: 0.875rem;
+                height: 44px;
+                width: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
 
             /* Improve mobile button spacing */
@@ -741,12 +765,6 @@
                             </div>
                         </div>
                         <div class="flex items-center space-x-3">
-                            <div class="relative">
-                                <select id="modelSelector" class="nav-button bg-gray-100 border border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                <option value="llama-3.1-8b-instant">At41rv Fast</option>
-                                <option value="deepseek-r1-distill-llama-70b">At41rv Thinking</option>
-                                </select>
-                            </div>
                             <button id="homeButton" class="nav-button text-sm font-medium">Home</button>
                             <button id="settingsButton" class="nav-button">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -822,8 +840,18 @@
 
                             <div class="input-container border-t border-gray-200/50 bg-white/95 backdrop-blur-sm p-4 md:p-6">
                                 <div class="max-w-4xl mx-auto">
-                                    <div class="flex items-end space-x-3">
-                                        <div class="relative flex-1">
+                                    <div class="flex flex-col gap-3">
+                                        <div class="flex items-center justify-end">
+                                            <div class="relative inline-flex items-center bg-gray-50 rounded-xl border border-gray-200 px-3 py-2">
+                                                <span class="text-sm text-gray-600 mr-2">Model:</span>
+                                                <select id="chatModelSelector" class="bg-transparent text-sm font-medium text-gray-700 focus:outline-none cursor-pointer">
+                                                    <option value="llama-3.1-8b-instant">At41rv Fast</option>
+                                                    <option value="deepseek-r1-distill-llama-70b">At41rv Thinking</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-end space-x-3">
+                                            <div class="relative flex-1">
                                             <input type="text" id="messageInput" 
                                                 placeholder="Type your message here..." 
                                                 class="message-input w-full bg-gray-50/80 border border-gray-200 rounded-2xl pl-4 pr-12 py-4 text-base text-gray-700 placeholder-gray-400 transition-all duration-300 focus:border-gray-400 focus:ring-0 focus:shadow-lg"
